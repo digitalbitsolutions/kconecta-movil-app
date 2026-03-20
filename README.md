@@ -1,30 +1,42 @@
 # KConecta Mobile App
 
-Aplicación móvil nativa desarrollada con React Native (Expo) que emula el comportamiento del CRM de KConecta, con un enfoque inicial especializado en la gestión de propiedades e inmuebles.
+Aplicacion movil (Expo + React Native) para consumir el backend del CRM de KConecta.
 
-## Objetivo del Proyecto
+Estado actual del alcance funcional:
+- Solo modulo de inmuebles.
+- Login funcional con backend de produccion.
+- Dashboard admin de inmuebles funcional.
+- Servicios y Blog fuera de alcance por ahora.
 
-Desarrollar una herramienta ágil para agentes inmobiliarios que permita gestionar el ciclo de vida de las propiedades (listado, creación, edición) manteniendo la lógica de roles y niveles de acceso del CRM original.
+## API y autenticacion
 
-## Arquitectura
+- API principal: `https://www.kconecta.com/api`
+- Fallback web automatico: `www` -> raiz -> `api.kconecta.com`
+- Auth: token Bearer (Sanctum)
+- Persistencia de token:
+  - Web: `localStorage`
+  - Nativo: `expo-secure-store`
 
-- **Frontend**: React Native + Expo + Expo Router.
-- **Estado Global**: Zustand (Auth y Data Stores).
-- **Backend API**: Laravel 12 (Sanctum) desplegado en Dokploy (`api.kconecta.com`).
-- **Autenticación**: Basada en tokens (Sanctum) con persistencia en SecureStore.
+## Stack tecnico
 
-## Características Principales
+- Frontend: Expo Router + React Native + React Native Web
+- Estado global: Zustand
+- Cliente HTTP: Axios con interceptores y manejo uniforme de errores
 
-- [x] Autenticación de agentes.
-- [x] Listado de propiedades personalizadas por usuario.
-- [ ] Creación y edición de inmuebles.
-- [ ] Gestión de niveles de acceso (Free, Premium, Agent, Admin).
-- [ ] Sincronización en tiempo real con el CRM.
+## Estado actual implementado
 
-## Estructura de Agente (Agentic Workflow)
+- Login y carga de sesion
+- Obtencion de `me` y propiedades
+- Dashboard admin inspirado en CRM web (solo inmuebles)
+- Refresh de datos desde app
+- Navegacion a detalle de propiedad (estructura base)
 
-Este proyecto utiliza una estructura diseñada para la colaboración con asistentes de IA:
+## Siguiente etapa
 
-- `mcp/`: Conectores y herramientas compartidas.
-- `skills/`: Scripts y lógica especializada para tareas recurrentes.
-- `.agent/`: Instrucciones y reglas específicas para el desarrollo del proyecto.
+- Navegacion principal:
+  - Dashboard
+  - Mis propiedades
+  - Usuarios
+  - Mi perfil
+- Sin Servicios
+- Sin Blog

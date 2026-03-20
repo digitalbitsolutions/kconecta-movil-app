@@ -1,5 +1,30 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+
+// Helper de almacenamiento multiplataforma
+const storage = {
+  getItem: async (key) => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return await SecureStore.getItemAsync(key);
+  },
+  setItem: async (key, value) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+  deleteItem: async (key) => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  }
+};
 
 export const useAuthStore = create((set, get) => ({
   token: null,
@@ -9,13 +34,13 @@ export const useAuthStore = create((set, get) => ({
   setToken: async (token) => {
     try {
       if (token) {
-        await SecureStore.setItemAsync('auth_token', token);
+        await storage.setItem('auth_token', token);
       } else {
-        await SecureStore.deleteItemAsync('auth_token');
+        await storage.deleteItem('auth_token');
       }
       set({ token });
     } catch (e) {
-      console.error('Error in SecureStore setToken', e);
+      console.error('Error in storage setToken', e);
     }
   },
   
@@ -24,18 +49,19 @@ export const useAuthStore = create((set, get) => ({
   initAuth: async () => {
     if (get().initialized) return;
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await storage.getItem('auth_token');
       set({ token, initialized: true });
     } catch (e) {
-      console.error('Error reading generic auth token', e);
+      console.error('Error reading auth token', e);
       set({ initialized: true });
     }
   },
   
   logout: async () => {
     try {
-        await SecureStore.deleteItemAsync('auth_token');
+        await storage.deleteItem('auth_token');
     } catch (e) {}
     set({ token: null, user: null });
   }
 }));
+

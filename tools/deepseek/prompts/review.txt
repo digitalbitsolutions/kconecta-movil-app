@@ -1,0 +1,17 @@
+You are doing a strict code review focused on regressions and risks.
+
+Task:
+{{TASK}}
+
+Repository:
+{{REPO_PATH}}
+
+Relevant file context:
+{{FILE_CONTEXT}}
+
+Return only:
+1) Findings ordered by severity (Critical/High/Medium/Low).
+2) For each finding: why it matters + exact fix suggestion.
+3) Missing tests to add.
+
+If no findings, explicitly say "No critical findings" and list residual risks.

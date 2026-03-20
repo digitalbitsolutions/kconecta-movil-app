@@ -1,25 +1,29 @@
-# Roadmap de Desarrollo: KConecta Mobile App
+# Roadmap De Desarrollo
 
-## Fase 1: Cimentación e Infraestructura (Completado ✅)
-- [x] Inicialización del proyecto Expo Router.
-- [x] Configuración de Axios con Interceptors para Sanctum.
-- [x] Sincronización del repositorio de producción (`kconecta-ag`).
-- [x] Configuración de subdominio `api.kconecta.com` con SSL.
+## Fase 1 - Base Tecnica (Completado)
+- [x] Inicializacion de proyecto Expo Router.
+- [x] Cliente API con Axios e interceptores.
+- [x] Login contra backend CRM en produccion.
+- [x] Persistencia de token web/nativo.
 
-## Fase 2: Gestión de Propiedades y Roles (En Progreso 🏗️)
-- [x] Listado básico de propiedades del agente.
-- [ ] Detalle de propiedad (Vista extendida).
-- [ ] Formulario de creación de propiedades (con subida de imágenes).
-- [ ] Lógica de filtrado por estatus y tipo de inmueble.
-- [ ] **Control de Acceso**: Validar `user_level_id` para restringir funciones según el plan del usuario.
+## Fase 2 - Inmuebles (En progreso)
+- [x] Carga de propiedades desde `/api/agent/properties`.
+- [x] Dashboard admin de inmuebles (solo propiedades).
+- [x] Fallback de host API en web para tolerar problemas de certificado por dominio.
+- [ ] Pantalla de detalle de propiedad con datos reales.
+- [ ] Pantalla de listado "Mis propiedades" separada del dashboard.
 
-## Fase 3: Integración y UX Premium (Pendiente)
-- [ ] Implementación de diseño "Premium" (Gradients, micro-animaciones).
-- [ ] Modo oscuro / Modo claro.
-- [ ] Notificaciones Push para nuevas consultas de visitantes.
-- [ ] Sincronización offline (Caché local).
+## Fase 3 - Navegacion Backoffice Movil (Siguiente)
+- [ ] Sidebar/menu movil con:
+- [ ] Dashboard
+- [ ] Mis propiedades
+- [ ] Usuarios
+- [ ] Mi perfil
+- [ ] Reglas de visibilidad por rol replicadas desde CRM web.
+- [ ] Servicios fuera de alcance.
+- [ ] Blog fuera de alcance.
 
-## Fase 4: Despliegue y Beta Testing (Pendiente)
-- [ ] Generación de builds de desarrollo (EAS Build).
-- [ ] Pruebas con agentes reales.
-- [ ] Publicación en App Store / Play Store.
+## Fase 4 - Consolidacion
+- [ ] UX polish y consistencia visual mobile.
+- [ ] Validaciones manuales de rol admin y no-admin.
+- [ ] Commits por modulo y despliegue iterativo.
