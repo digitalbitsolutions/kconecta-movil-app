@@ -185,7 +185,7 @@ const DistributionRow = ({ label, value, max, color }) => {
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { logout, user, setUser } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -371,9 +371,6 @@ export default function DashboardScreen() {
           <Text style={styles.headerTitle}>Hola, {welcomeName}</Text>
           <Text style={styles.headerSubtitle}>{roleName} · Panel de control</Text>
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Cerrar sesion</Text>
-        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -517,18 +514,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
   headerTitle: { fontSize: 30, fontWeight: '800', color: '#0F172A' },
   headerSubtitle: { marginTop: 4, color: '#64748B', fontSize: 14, fontWeight: '600' },
-  logoutBtn: {
-    backgroundColor: '#E11D48',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  logoutText: { color: '#FFFFFF', fontWeight: '700' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 10, color: '#64748B', fontSize: 14 },
   content: { padding: 14, paddingBottom: 24 },

@@ -155,10 +155,17 @@ export default function PropertiesScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.title}>Mis propiedades</Text>
-        <Text style={styles.subtitle}>
-          {adminView ? 'Vista administrador: inmuebles de todos los usuarios.' : 'Tus inmuebles registrados.'}
-        </Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleWrap}>
+            <Text style={styles.title}>{adminView ? 'Propiedades' : 'Mis propiedades'}</Text>
+            <Text style={styles.subtitle}>
+              {adminView ? 'Vista administrador: inmuebles de todos los usuarios.' : 'Tus inmuebles registrados.'}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={() => router.push('/properties/new')}>
+            <Text style={styles.addButtonText}>Agregar</Text>
+          </TouchableOpacity>
+        </View>
 
         {loading ? (
           <View style={styles.centered}>
@@ -210,6 +217,16 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingBottom: 26,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  titleWrap: {
+    flex: 1,
+    paddingRight: 10,
+  },
   title: {
     color: '#0F172A',
     fontSize: 28,
@@ -217,10 +234,21 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 4,
-    marginBottom: 12,
     color: '#475569',
     fontSize: 14,
     fontWeight: '600',
+  },
+  addButton: {
+    alignSelf: 'center',
+    backgroundColor: '#14B8A6',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
   centered: {
     paddingTop: 24,

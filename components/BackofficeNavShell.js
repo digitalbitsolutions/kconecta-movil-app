@@ -3,12 +3,25 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensio
 import { usePathname, useRouter } from 'expo-router';
 import { useAuthStore } from '../store/useAuthStore';
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/' },
-  { label: 'Mis propiedades', href: '/properties' },
-  { label: 'Usuarios', href: '/users' },
-  { label: 'Mi perfil', href: '/profile' },
-];
+const parseNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const pickString = (...values) => {
+  for (let index = 0; index < values.length; index += 1) {
+    const current = values[index];
+    if (typeof current === 'string' && current.trim()) return current.trim();
+  }
+  return '';
+};
+
+const isAdminUser = (rawUser) => {
+  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
+  if (levelId === 1) return true;
+  const roleText = pickString(rawUser?.role, rawUser?.user_level_name).toLowerCase();
+  return roleText.includes('admin');
+};
 
 const isActivePath = (pathname, href) => {
   if (href === '/') {
@@ -29,9 +42,17 @@ const NavButton = ({ active, label, onPress, compact = false }) => (
 export default function BackofficeNavShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 960;
+  const adminView = isAdminUser(user);
+
+  const navItems = [
+    { label: 'Dashboard', href: '/' },
+    { label: adminView ? 'Propiedades' : 'Mis propiedades', href: '/properties' },
+    { label: 'Usuarios', href: '/users' },
+    { label: 'Mi perfil', href: '/profile' },
+  ];
 
   if (isDesktop) {
     return (
@@ -39,7 +60,7 @@ export default function BackofficeNavShell({ children }) {
         <View style={styles.sidebar}>
           <Text style={styles.brand}>KConecta</Text>
           <View style={styles.sidebarNav}>
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <NavButton
                 key={item.href}
                 active={isActivePath(pathname, item.href)}
@@ -66,7 +87,7 @@ export default function BackofficeNavShell({ children }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.mobileNavContent}
         >
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavButton
               key={item.href}
               active={isActivePath(pathname, item.href)}
