@@ -247,26 +247,8 @@ export const getPropertyTypesApi = async () => {
 };
 
 export const createPropertyApi = async (payload) => {
-  const candidates = ['/agent/properties', '/properties', '/post/store'];
-  let lastError = null;
-
-  for (let index = 0; index < candidates.length; index += 1) {
-    const endpoint = candidates[index];
-    try {
-      const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
-      return response.data;
-    } catch (error) {
-      lastError = error;
-      const status = error?.response?.status ?? null;
-      const hasNext = index < candidates.length - 1;
-      if (hasNext && shouldTryNextEndpoint(status)) {
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw lastError;
+  const response = await withBaseUrlFallback(() => apiClient.post('/agent/properties', payload));
+  return response.data;
 };
 
 export const processAgentTask = async (taskType, input) => {

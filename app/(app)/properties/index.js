@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -69,6 +70,37 @@ const resolveOwner = (property) => {
 const resolveDate = (property) =>
   pickString(property?.updated_at, property?.created_at, property?.date, property?.published_at);
 
+const normalizeText = (value) => pickString(value).toLowerCase();
+
+const resolveType = (property) =>
+  pickString(property?.type_name, property?.type, property?.property_type, property?.type_label, 'Sin tipo');
+
+const resolveCategory = (property) =>
+  pickString(
+    property?.category_name,
+    property?.category,
+    property?.operation_type,
+    property?.operation,
+    'Sin categoria'
+  );
+
+const resolveStatus = (property) =>
+  pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente');
+
+const statusLabel = (rawStatus) => {
+  const lowered = normalizeText(rawStatus);
+  if (!lowered) return 'Pendiente';
+  if (lowered.includes('public') || lowered === '1' || lowered === 'active') return 'Publicado';
+  if (lowered.includes('pend') || lowered === '0' || lowered === 'inactive') return 'Pendiente';
+  return rawStatus;
+};
+
+const FilterChip = ({ label, selected, onPress }) => (
+  <TouchableOpacity onPress={onPress} style={[styles.filterChip, selected ? styles.filterChipActive : null]}>
+    <Text style={[styles.filterChipText, selected ? styles.filterChipTextActive : null]}>{label}</Text>
+  </TouchableOpacity>
+);
+
 export default function PropertiesScreen() {
   const router = useRouter();
   const { user, setUser } = useAuthStore();
@@ -78,12 +110,72 @@ export default function PropertiesScreen() {
   const [errorText, setErrorText] = useState('');
   const [canManage, setCanManage] = useState(true);
   const [adminView, setAdminView] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Todos');
+  const [typeFilter, setTypeFilter] = useState('Todos');
+  const [categoryFilter, setCategoryFilter] = useState('Todas');
 
   const sortedProperties = useMemo(() => {
     const cloned = [...properties];
     cloned.sort((left, right) => resolveDate(right).localeCompare(resolveDate(left)));
     return cloned;
   }, [properties]);
+
+  const statusOptions = useMemo(() => {
+    const options = new Set(['Todos']);
+    sortedProperties.forEach((property) => options.add(statusLabel(resolveStatus(property))));
+    return [...options];
+  }, [sortedProperties]);
+
+  const typeOptions = useMemo(() => {
+    const options = new Set(['Todos']);
+    sortedProperties.forEach((property) => options.add(resolveType(property)));
+    return [...options];
+  }, [sortedProperties]);
+
+  const categoryOptions = useMemo(() => {
+    const options = new Set(['Todas']);
+    sortedProperties.forEach((property) => options.add(resolveCategory(property)));
+    return [...options];
+  }, [sortedProperties]);
+
+  const filteredProperties = useMemo(() => {
+    const search = normalizeText(searchText);
+
+    return sortedProperties.filter((property) => {
+      const title = normalizeText(property?.title ?? property?.name ?? property?.reference);
+      const reference = normalizeText(property?.reference);
+      const owner = normalizeText(resolveOwner(property));
+      const status = statusLabel(resolveStatus(property));
+      const type = resolveType(property);
+      const category = resolveCategory(property);
+
+      if (search && !title.includes(search) && !reference.includes(search) && !owner.includes(search)) {
+        return false;
+      }
+
+      if (statusFilter !== 'Todos' && status !== statusFilter) {
+        return false;
+      }
+
+      if (typeFilter !== 'Todos' && type !== typeFilter) {
+        return false;
+      }
+
+      if (categoryFilter !== 'Todas' && category !== categoryFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [sortedProperties, searchText, statusFilter, typeFilter, categoryFilter]);
+
+  const resetFilters = () => {
+    setSearchText('');
+    setStatusFilter('Todos');
+    setTypeFilter('Todos');
+    setCategoryFilter('Todas');
+  };
 
   const loadProperties = async () => {
     setErrorText('');
@@ -167,6 +259,60 @@ export default function PropertiesScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.filtersCard}>
+          <Text style={styles.filtersTitle}>Listado</Text>
+          <TextInput
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="Buscar por titulo, referencia o usuario"
+            placeholderTextColor="#94A3B8"
+            style={styles.searchInput}
+          />
+
+          <Text style={styles.filterGroupLabel}>Estado</Text>
+          <View style={styles.chipsWrap}>
+            {statusOptions.map((option) => (
+              <FilterChip
+                key={`status-${option}`}
+                label={option}
+                selected={statusFilter === option}
+                onPress={() => setStatusFilter(option)}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.filterGroupLabel}>Tipo</Text>
+          <View style={styles.chipsWrap}>
+            {typeOptions.map((option) => (
+              <FilterChip
+                key={`type-${option}`}
+                label={option}
+                selected={typeFilter === option}
+                onPress={() => setTypeFilter(option)}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.filterGroupLabel}>Categoria</Text>
+          <View style={styles.chipsWrap}>
+            {categoryOptions.map((option) => (
+              <FilterChip
+                key={`category-${option}`}
+                label={option}
+                selected={categoryFilter === option}
+                onPress={() => setCategoryFilter(option)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.filtersFooter}>
+            <Text style={styles.resultsCount}>{filteredProperties.length} inmuebles</Text>
+            <TouchableOpacity onPress={resetFilters} style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>Limpiar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#2563EB" />
@@ -188,8 +334,8 @@ export default function PropertiesScreen() {
               </View>
             ) : null}
 
-            {sortedProperties.length ? (
-              sortedProperties.map((item, index) => (
+            {filteredProperties.length ? (
+              filteredProperties.map((item, index) => (
                 <TouchableOpacity key={`${resolveId(item) || 'property'}-${index}`} onPress={() => openProperty(item)}>
                   <PropertyCard item={item} />
                   {adminView ? <Text style={styles.ownerText}>Usuario: {resolveOwner(item)}</Text> : null}
@@ -249,6 +395,90 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  filtersCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginBottom: 12,
+  },
+  filtersTitle: {
+    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  searchInput: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filterGroupLabel: {
+    marginTop: 10,
+    marginBottom: 6,
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  filterChip: {
+    marginHorizontal: 4,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  filterChipActive: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#60A5FA',
+  },
+  filterChipText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterChipTextActive: {
+    color: '#1D4ED8',
+  },
+  filtersFooter: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultsCount: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  clearBtn: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: '#FFFFFF',
+  },
+  clearBtnText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
   },
   centered: {
     paddingTop: 24,

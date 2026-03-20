@@ -158,7 +158,19 @@ export default function PropertyCreateScreen() {
       router.replace('/properties');
     } catch (error) {
       const details = getApiErrorDetails(error);
-      setErrorText(`No se pudo crear la propiedad: ${details.message}`);
+      const validationErrors = details?.data?.errors && typeof details.data.errors === 'object'
+        ? Object.values(details.data.errors).flat().filter(Boolean).join(' | ')
+        : '';
+
+      if (details.status === 501) {
+        setErrorText(
+          'La API de alta de propiedades aun no esta implementada en backend (/api/agent/properties devuelve 501).'
+        );
+      } else if (details.status === 422 && validationErrors) {
+        setErrorText(`Validacion: ${validationErrors}`);
+      } else {
+        setErrorText(`No se pudo crear la propiedad: ${details.message}`);
+      }
     } finally {
       setSubmitting(false);
     }
