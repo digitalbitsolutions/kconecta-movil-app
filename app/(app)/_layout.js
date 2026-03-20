@@ -1,26 +1,42 @@
-import { Stack, Redirect } from 'expo-router';
+import { Redirect, Slot } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
-import { ActivityIndicator, View } from 'react-native';
+import BackofficeNavShell from '../../components/BackofficeNavShell';
 
 export default function AppLayout() {
   const { token, initialized } = useAuthStore();
 
   if (!initialized) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loaderWrap}>
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
-  // Si no hay token, redirigir incondicionalmente al login desde el layout protegido.
   if (!token) {
     return <Redirect href="/login" />;
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-    </Stack>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <BackofficeNavShell>
+        <Slot />
+      </BackofficeNavShell>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#EEF3F8',
+  },
+  loaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF3F8',
+  },
+});
