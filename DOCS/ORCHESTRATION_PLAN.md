@@ -2,6 +2,20 @@
 
 Este plan define el flujo de trabajo con modelos locales para reducir costo de tokens.
 
+## Estado De Sincronizacion (2026-03-21)
+- Workspace principal activo: `C:\MeegDev\kconecta-app-movil`.
+- CRM web de referencia (solo consulta): `C:\MeegDev\kconecta-crm\web`.
+- El flujo de alta movil ya replica la estructura funcional del CRM:
+  - Paso 1: seleccion de tipo.
+  - Paso 2: formulario dinamico por tipo.
+  - Imagenes: seleccion + WebP + upload.
+- Pantalla modular activa para crear/editar:
+  - `screens/property/EditPropertyScreen.tsx`
+  - `app/(app)/properties/new/index.js` apunta a esa pantalla.
+- Validacion tecnica reciente:
+  - `npx expo export --platform web --output-dir tmp/web-build` OK.
+- Siguiente bloque: cerrar paridad fina de campos/catalogos y QA visual final de edicion.
+
 ## Objetivo
 - Usar modelos locales para planificacion, generacion de cambios y review.
 - Mantener prompts cortos y contexto minimo.
@@ -37,3 +51,14 @@ Este plan define el flujo de trabajo con modelos locales para reducir costo de t
   - `POST /login`
   - `GET /me`
   - `GET /agent/properties`
+  - `POST /agent/properties`
+  - `PATCH /agent/properties/{id}`
+  - `DELETE /agent/properties/{id}`
+
+## Proxima Iteracion
+- Objetivo: completar paridad de formulario por tipo (catalogos/selects y reglas) y editar propiedad.
+- Reparto sugerido:
+  - Gemma: checklist de campos faltantes por tipo (comparando `form_*.blade.php` vs app actual).
+  - DeepSeek: patch de UI/estado para campos faltantes y mapeo de payload.
+  - DeepSeek: patch de afinado visual/UX en secciones (margen, labels, orden).
+  - Codex: integracion final, pruebas, commit y push.

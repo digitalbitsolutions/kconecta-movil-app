@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   RefreshControl,
   ScrollView,
@@ -10,9 +11,9 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getApiErrorDetails, getMeApi, getPropertiesApi } from '../../../api/client';
+import { apiClient, getApiErrorDetails, getMeApi, getPropertiesApi } from '../../../api/client';
 import { useAuthStore } from '../../../store/useAuthStore';
-import PropertyCard from '../../../components/PropertyCard';
+import { PropertyCardCompact } from '../../../components/property';
 
 const parseNumber = (value) => {
   const parsed = Number(value);
@@ -241,6 +242,81 @@ export default function PropertiesScreen() {
     router.push({ pathname: '/property/[id]', params: { id } });
   };
 
+  const handleEdit = (item) => {
+    const id = resolveId(item);
+    if (!id) return;
+    router.push({ pathname: '/properties/new', params: { mode: 'edit', id } });
+  };
+
+  const handleOpenAnnouncement = (item) => {
+    const id = resolveId(item);
+    if (!id) return;
+    router.push({ pathname: '/property/preview/[id]', params: { id } });
+  };
+
+  const handleDelete = (item) => {
+    const id = resolveId(item);
+    if (!id) return;
+
+    Alert.alert('Eliminar propiedad', 'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await apiClient.delete(`/agent/properties/${id}`);
+            setProperties((prev) => prev.filter((candidate) => resolveId(candidate) !== id));
+          } catch (error) {
+            const details = getApiErrorDetails(error);
+            Alert.alert('Eliminar', details.message || 'No se pudo eliminar la propiedad.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleToggleStatus = (item) => {
+    const id = resolveId(item);
+    if (!id) return;
+
+    const currentStateId = parseNumber(item?.state_id ?? item?.status_id);
+    const nextStateId = currentStateId === 5 ? 4 : 5;
+    const actionLabel = nextStateId === 5 ? 'deshabilitar' : 'habilitar';
+
+    Alert.alert(
+      'Cambiar estado',
+      `Vas a ${actionLabel} esta propiedad. Puede afectar su visibilidad en listados. Quieres continuar?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            try {
+              const response = await apiClient.patch(`/agent/properties/${id}`, { state_id: nextStateId });
+              const updated = response?.data?.data || response?.data || {};
+              setProperties((prev) =>
+                prev.map((candidate) => {
+                  if (resolveId(candidate) !== id) return candidate;
+                  return {
+                    ...candidate,
+                    ...updated,
+                    state_id: parseNumber(updated?.state_id ?? nextStateId),
+                    state: updated?.state ?? (nextStateId === 5 ? 'inactive' : 'active'),
+                    status: updated?.status ?? (nextStateId === 5 ? 'inactivo' : 'publicado'),
+                  };
+                })
+              );
+            } catch (error) {
+              const details = getApiErrorDetails(error);
+              Alert.alert('Estado', details.message || 'No se pudo actualizar el estado.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -336,10 +412,16 @@ export default function PropertiesScreen() {
 
             {filteredProperties.length ? (
               filteredProperties.map((item, index) => (
-                <TouchableOpacity key={`${resolveId(item) || 'property'}-${index}`} onPress={() => openProperty(item)}>
-                  <PropertyCard item={item} />
-                  {adminView ? <Text style={styles.ownerText}>Usuario: {resolveOwner(item)}</Text> : null}
-                </TouchableOpacity>
+                <PropertyCardCompact
+                  key={`${resolveId(item) || 'property'}-${index}`}
+                  item={item}
+                  onPress={() => openProperty(item)}
+                  onEdit={() => handleEdit(item)}
+                  onToggleStatus={() => handleToggleStatus(item)}
+                  onDelete={() => handleDelete(item)}
+                  onOpen={() => handleOpenAnnouncement(item)}
+                  showOwner={adminView}
+                />
               ))
             ) : (
               <View style={styles.noticeCard}>
@@ -509,13 +591,5 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 13,
     lineHeight: 18,
-  },
-  ownerText: {
-    marginTop: -4,
-    marginBottom: 10,
-    marginLeft: 8,
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

@@ -132,7 +132,18 @@ export const getApiErrorDetails = (error) => {
   };
 };
 
+const isFormDataPayload = (value) => typeof FormData !== 'undefined' && value instanceof FormData;
+
 apiClient.interceptors.request.use(async (config) => {
+  if (isFormDataPayload(config?.data) && config?.headers) {
+    if (typeof config.headers.set === 'function') {
+      config.headers.set('Content-Type', undefined);
+    } else {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
+  }
+
   try {
     if (config.url === '/login') {
       return config;
@@ -248,6 +259,46 @@ export const getPropertyTypesApi = async () => {
 
 export const createPropertyApi = async (payload) => {
   const response = await withBaseUrlFallback(() => apiClient.post('/agent/properties', payload));
+  return response.data;
+};
+
+const extractObjectPayload = (payload) => {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      return extractObjectPayload(payload.data);
+    }
+    if (payload.property && typeof payload.property === 'object' && !Array.isArray(payload.property)) {
+      return payload.property;
+    }
+    return payload;
+  }
+  return null;
+};
+
+export const getPropertyByIdApi = async (id) => {
+  if (!id) {
+    throw new Error('Property id is required');
+  }
+  const response = await withBaseUrlFallback(() => apiClient.get(`/agent/properties/${id}`));
+  return extractObjectPayload(response.data) || response.data;
+};
+
+export const updatePropertyApi = async (id, payload) => {
+  if (!id) {
+    throw new Error('Property id is required');
+  }
+
+  if (isFormDataPayload(payload)) {
+    const hasGetter = typeof payload.get === 'function';
+    const hasOverride = hasGetter ? Boolean(payload.get('_method')) : false;
+    if (!hasOverride) {
+      payload.append('_method', 'PATCH');
+    }
+    const response = await withBaseUrlFallback(() => apiClient.post(`/agent/properties/${id}`, payload));
+    return response.data;
+  }
+
+  const response = await withBaseUrlFallback(() => apiClient.patch(`/agent/properties/${id}`, payload));
   return response.data;
 };
 

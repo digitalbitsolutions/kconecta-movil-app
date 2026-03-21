@@ -1,34 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiClient, getApiErrorDetails } from '../../../api/client';
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-const formatPrice = (value) => {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) return 'Sin precio';
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
+import { PropertyCardDetailed } from '../../../components/property';
 
 export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -61,18 +36,69 @@ export default function PropertyDetailScreen() {
     load();
   }, [id]);
 
-  const title = pickString(property?.title, property?.name, `Propiedad #${id}`);
-  const category = pickString(property?.category_name, property?.category, 'Sin categoria');
-  const type = pickString(property?.type_name, property?.type, 'Sin tipo');
-  const address = pickString(property?.address, property?.address_line, property?.location, 'Sin direccion');
-  const city = pickString(property?.city, property?.province);
-  const price = property?.price ?? property?.sale_price ?? property?.rental_price;
-  const owner = pickString(
-    property?.user_name,
-    property?.owner_name,
-    property?.user_first_name,
-    property?.owner_first_name
-  );
+  const handleEdit = () => {
+    if (!id) return;
+    router.push({ pathname: '/properties/new', params: { mode: 'edit', id } });
+  };
+
+  const handleDelete = () => {
+    if (!id) return;
+    Alert.alert('Eliminar propiedad', 'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await apiClient.delete(`/agent/properties/${id}`);
+            router.replace('/properties');
+          } catch (error) {
+            const details = getApiErrorDetails(error);
+            Alert.alert('Eliminar', details.message || 'No se pudo eliminar la propiedad.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleToggleStatus = () => {
+    if (!id || !property) return;
+    const currentState = Number(property?.state_id ?? 4);
+    const nextState = currentState === 5 ? 4 : 5;
+    const label = nextState === 5 ? 'deshabilitar' : 'habilitar';
+
+    Alert.alert(
+      'Cambiar estado',
+      `Vas a ${label} esta propiedad. Puede afectar su visibilidad en listados. Quieres continuar?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            try {
+              const response = await apiClient.patch(`/agent/properties/${id}`, { state_id: nextState });
+              const updated = response?.data?.data || response?.data || {};
+              setProperty((prev) => ({
+                ...(prev || {}),
+                ...updated,
+                state_id: Number(updated?.state_id ?? nextState),
+                state: updated?.state ?? (nextState === 5 ? 'inactive' : 'active'),
+                status: updated?.status ?? (nextState === 5 ? 'inactivo' : 'publicado'),
+              }));
+            } catch (error) {
+              const details = getApiErrorDetails(error);
+              Alert.alert('Estado', details.message || 'No se pudo actualizar el estado.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenAnnouncement = () => {
+    if (!id) return;
+    router.push({ pathname: '/property/preview/[id]', params: { id } });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -92,18 +118,16 @@ export default function PropertyDetailScreen() {
             <Text style={styles.errorText}>{errorText}</Text>
           </View>
         ) : (
-          <View style={styles.card}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>
-              {type} · {category}
-            </Text>
-            <Text style={styles.address}>
-              {address}
-              {city ? `, ${city}` : ''}
-            </Text>
-            <Text style={styles.price}>{formatPrice(price)}</Text>
-            {owner ? <Text style={styles.meta}>Usuario: {owner}</Text> : null}
-          </View>
+          <PropertyCardDetailed
+            item={property}
+            onPress={() => {}}
+            onEdit={handleEdit}
+            onToggleStatus={handleToggleStatus}
+            onDelete={handleDelete}
+            onOpen={handleOpenAnnouncement}
+            showOwner
+            showActions
+          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -143,37 +167,11 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   card: {
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     padding: 14,
-  },
-  title: {
-    color: '#0F172A',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: '#475569',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  address: {
-    color: '#334155',
-    fontSize: 14,
-    marginTop: 10,
-  },
-  price: {
-    color: '#1D4ED8',
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 14,
-  },
-  meta: {
-    color: '#64748B',
-    fontSize: 13,
-    marginTop: 8,
   },
   errorTitle: {
     color: '#B91C1C',
