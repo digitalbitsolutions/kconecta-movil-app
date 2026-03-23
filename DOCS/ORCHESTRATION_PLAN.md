@@ -107,10 +107,13 @@ Este plan define el flujo de trabajo con modelos locales para reducir costo de t
 - Mantener prompts cortos y contexto minimo.
 - Dejar a Codex la integracion final en repositorio y validaciones.
 
-## Reparto De Roles
-- Gemma (`gemma3:4b`): plan corto y review rapido.
-- DeepSeek (`deepseek-coder-v2:16b`): patch y cambios de codigo.
-- Codex: aplicar cambios reales, ejecutar validaciones, commit y push.
+## Reparto De Roles (Dream Team IA)
+// Agent: Codex
+- **Architect (Gemma-3)**: Planificación técnica, diagramas de diseño y definición de contratos API.
+- **Coder (DeepSeek-Coder-V2)**: Generación del código funcional base y lógica de negocio primaria.
+- **Refactor (Qwen-2.5-Coder)**: Optimización de rendimiento, limpieza de código y refactorización DRY.
+- **Auditor/QA (Mistral-7B)**: Revisión de seguridad, detección de edge-cases y validación de lógica de flujo.
+- **Integrator (Codex)**: Aplicación de parches, resolución de conflictos Git, despliegue y validación real en entorno.
 
 ## Flujo Estandar
 1. Definir una sola tarea por iteracion.

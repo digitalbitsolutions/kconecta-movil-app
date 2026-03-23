@@ -34,4 +34,8 @@ export interface MediaAsset {
   type: string;
   size?: number | null;
   file?: File;
+  // Agent: DeepSeek - Metadata para sync asincrono
+  serverId?: number | string | null;
+  status?: 'local' | 'uploading' | 'synced' | 'deleting' | 'error';
+  progress?: number;
 }

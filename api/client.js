@@ -369,6 +369,20 @@ export const uploadMediaApi = async (propertyId, file, onProgress = null) => {
   return response.data;
 };
 
+export const deleteMediaApi = async (propertyId, imageId) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.delete(`/agent/properties/${propertyId}/media/${imageId}`)
+  );
+  return response.data;
+};
+
+export const updateMediaOrderApi = async (propertyId, orderMap) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.post(`/agent/properties/${propertyId}/media/reorder`, { order: orderMap })
+  );
+  return response.data;
+};
+
 export const processAgentTask = async (taskType, input) => {
   try {
     const response = await withBaseUrlFallback(() =>

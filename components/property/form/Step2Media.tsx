@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'rea
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { usePropertyForm } from './PropertyFormContext';
+import { uploadMediaApi, deleteMediaApi } from '../../../api/client';
 import { 
   Card as UiCard, 
   SectionHeader, 
@@ -12,13 +13,58 @@ import {
   radius as uiRadius,
   typography as uiTypography
 } from '../../ui';
+import { MediaAsset } from './types';
 
 export const Step2Media: React.FC = () => {
   const { 
     coverImage, setCoverImage, 
     galleryImages, setGalleryImages, 
-    videoAsset, setVideoAsset 
+    videoAsset, setVideoAsset,
+    removedImageIds, setRemovedImageIds,
+    form, isEditMode
   } = usePropertyForm();
+
+  // Agent: DeepSeek - Lógica de subida inmediata para galería
+  const handleGalleryUpload = async (assets: any[]) => {
+    const propertyId = String(form.id || '');
+    if (!propertyId) {
+      // Si es alta nueva, solo guardamos local
+      const newImages = assets.map(asset => ({
+        uri: asset.uri,
+        name: asset.fileName || `img_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+        status: 'local' as const
+      }));
+      setGalleryImages([...galleryImages, ...newImages]);
+      return;
+    }
+
+    // Si es edición, subimos asíncronamente
+    const newImages = assets.map(asset => ({
+      uri: asset.uri,
+      name: asset.fileName || `img_${Date.now()}.jpg`,
+      type: 'image/jpeg',
+      status: 'uploading' as const,
+      progress: 0
+    }));
+
+    setGalleryImages((prev: MediaAsset[]) => [...prev, ...newImages]);
+
+    for (const img of newImages) {
+      try {
+        const file = { uri: img.uri, name: img.name, type: img.type };
+        const response = await uploadMediaApi(propertyId, file, (progress: number) => {
+          setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, progress } : i));
+        });
+        
+        setGalleryImages((prev: MediaAsset[]) => prev.map(i => 
+          i.uri === img.uri ? { ...i, serverId: response.id, status: 'synced' as const } : i
+        ));
+      } catch (err) {
+        setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, status: 'error' as const } : i));
+      }
+    }
+  };
 
   const pickImage = async (type: 'cover' | 'gallery' | 'video') => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -36,23 +82,27 @@ export const Step2Media: React.FC = () => {
     if (!result.canceled) {
       if (type === 'cover') {
         const asset = result.assets[0];
-        setCoverImage({ uri: asset.uri, name: asset.fileName || 'cover.jpg', type: 'image/jpeg' });
+        setCoverImage({ uri: asset.uri, name: asset.fileName || 'cover.jpg', type: 'image/jpeg', status: 'local' });
       } else if (type === 'gallery') {
-        const newImages = result.assets.map(asset => ({
-          uri: asset.uri,
-          name: asset.fileName || `image_${Date.now()}.jpg`,
-          type: 'image/jpeg'
-        }));
-        setGalleryImages([...galleryImages, ...newImages]);
+        await handleGalleryUpload(result.assets);
       } else if (type === 'video') {
         const asset = result.assets[0];
-        setVideoAsset({ uri: asset.uri, name: asset.fileName || 'video.mp4', type: 'video/mp4' });
+        setVideoAsset({ uri: asset.uri, name: asset.fileName || 'video.mp4', type: 'video/mp4', status: 'local' });
       }
     }
   };
 
-  const removeGalleryImage = (uri: string) => {
-    setGalleryImages(galleryImages.filter(img => img.uri !== uri));
+  const removeGalleryImage = async (img: any) => {
+    if (img.serverId) {
+      setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, status: 'deleting' } : i));
+      try {
+        await deleteMediaApi(String(form.id), img.serverId);
+        setRemovedImageIds((prev: (string|number)[]) => [...prev, img.serverId]);
+      } catch (err) {
+        Toast.show({ type: 'error', text1: 'No se pudo borrar del servidor' });
+      }
+    }
+    setGalleryImages(galleryImages.filter(i => i.uri !== img.uri));
   };
 
   const moveImage = (index: number, direction: 'left' | 'right') => {

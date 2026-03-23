@@ -50,9 +50,12 @@ interface PropertyFormContextType {
   coverImage: MediaAsset | null;
   setCoverImage: (image: MediaAsset | null) => void;
   galleryImages: MediaAsset[];
-  setGalleryImages: (images: MediaAsset[]) => void;
+  setGalleryImages: React.Dispatch<React.SetStateAction<MediaAsset[]>>;
   videoAsset: MediaAsset | null;
   setVideoAsset: (video: MediaAsset | null) => void;
+  // Agent: DeepSeek - Tracking de borrados para sync final
+  removedImageIds: (number | string)[];
+  setRemovedImageIds: React.Dispatch<React.SetStateAction<(number | string)[]>>;
   
   // Helpers
   updateField: (key: string, value: any) => void;
@@ -89,6 +92,8 @@ interface PropertyFormContextType {
   toggleListValue: (rawField: string, value: string) => void;
   toggleBooleanRawField: (rawField: string) => void;
   incrementRawNumber: (rawField: string, delta: number, min?: number) => void;
+  // Agent: Mistral - Seguridad de flujo
+  hasActiveUploads: boolean;
 }
 
 const PropertyFormContext = createContext<PropertyFormContextType | undefined>(undefined);
@@ -133,6 +138,8 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
   const [coverImage, setCoverImage] = useState<MediaAsset | null>(null);
   const [galleryImages, setGalleryImages] = useState<MediaAsset[]>([]);
   const [videoAsset, setVideoAsset] = useState<MediaAsset | null>(null);
+  // Agent: DeepSeek
+  const [removedImageIds, setRemovedImageIds] = useState<(number | string)[]>([]);
 
   const { catalogs, loading: loadingCatalogs, error: catalogErrorText, reload: reloadCatalogs } = usePropertyFormCatalogs(step === 2 ? selectedType : null);
 
@@ -229,6 +236,13 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
     return val === '1' || val === '2';
   }, [getRawFieldValue]);
 
+  // Agent: Mistral - Auditoría de estado
+  const hasActiveUploads = useMemo(() => {
+    const imagesBusy = galleryImages.some(img => img.status === 'uploading' || img.status === 'deleting');
+    const coverBusy = coverImage?.status === 'uploading' || coverImage?.status === 'deleting';
+    return imagesBusy || coverBusy;
+  }, [galleryImages, coverImage]);
+
   const validateForm = useCallback(() => {
     if (!form.title.trim()) return 'El titulo es obligatorio.';
     if (!form.address.trim() || !form.city.trim()) return 'La direccion y ciudad son obligatorias.';
@@ -318,8 +332,24 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
         requestPayload.append(rawField, String(parsed));
       });
 
-      if (coverImage) appendUploadFile(requestPayload, 'cover_image', coverImage);
-      galleryImages.forEach((imageFile) => appendUploadFile(requestPayload, 'more_images[]', imageFile));
+      if (coverImage && coverImage.status === 'local') {
+        appendUploadFile(requestPayload, 'cover_image', coverImage);
+      } else if (coverImage?.serverId) {
+        requestPayload.append('cover_image_id', String(coverImage.serverId));
+      }
+
+      galleryImages.forEach((image) => {
+        if (image.status === 'local') {
+          appendUploadFile(requestPayload, 'more_images[]', image);
+        } else if (image.serverId) {
+          requestPayload.append('current_images_ids[]', String(image.serverId));
+        }
+      });
+
+      if (removedImageIds.length > 0) {
+        removedImageIds.forEach(id => requestPayload.append('removed_images_ids[]', String(id)));
+      }
+
       if (videoAsset) appendUploadFile(requestPayload, 'video', videoAsset);
 
       if (isEdit && initialId) {
@@ -360,6 +390,8 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
     coverImage, setCoverImage,
     galleryImages, setGalleryImages,
     videoAsset, setVideoAsset,
+    removedImageIds, setRemovedImageIds,
+    hasActiveUploads,
     updateField,
     setRawFieldValue,
     getRawFieldValue,
@@ -388,10 +420,10 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
     incrementRawNumber
   }), [
     step, form, selectedType, operationMode, loadingProperty, submitting, 
-    errorText, coverImage, galleryImages, videoAsset, catalogs, loadingCatalogs,
+    errorText, coverImage, galleryImages, videoAsset, removedImageIds, catalogs, loadingCatalogs,
     catalogErrorText, reloadCatalogs, isEdit, editSnapshot, updateField, 
     setRawFieldValue, getRawFieldValue, handleSelectType, loadProperty, submitForm,
-    showHeatingFuel, isResidential, isHouseChalet, isApartment, isRusticHouse,
+    showHeatingFuel, hasActiveUploads, isResidential, isHouseChalet, isApartment, isRusticHouse,
     isLocalPremises, isGarage, isLand, saleOnlyVisible, rentalOnlyVisible,
     toggleListValue, toggleBooleanRawField, incrementRawNumber
   ]);
