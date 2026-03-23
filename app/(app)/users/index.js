@@ -7,41 +7,12 @@ import { canAccessUsers } from '../../../utils/userPermissions';
 import {
   extractProperties,
   extractUser,
-  parseNumber,
-  pickString,
 } from '../../../utils/dataMappers';
 
+import { aggregateUsersByProperties, calculateTotalPropertiesFromUsers } from '../../../components/users/userHelpers';
+import { UserCard, UsersSummary } from '../../../components/users/UserCard';
 
-const buildUserRows = (properties) => {
-  const map = new Map();
 
-  properties.forEach((property) => {
-    const userId = parseNumber(property?.user_id ?? property?.owner_id);
-    if (!userId) return;
-
-    const displayName = pickString(
-      property?.user_name,
-      property?.owner_name,
-      `${pickString(property?.user_first_name)} ${pickString(property?.user_last_name)}`.trim(),
-      `Usuario #${userId}`
-    );
-
-    const existing = map.get(userId) || {
-      userId,
-      displayName,
-      propertiesCount: 0,
-    };
-
-    existing.propertiesCount += 1;
-    if (!existing.displayName || existing.displayName.startsWith('Usuario #')) {
-      existing.displayName = displayName;
-    }
-
-    map.set(userId, existing);
-  });
-
-  return [...map.values()].sort((left, right) => right.propertiesCount - left.propertiesCount);
-};
 
 export default function UsersScreen() {
   const { user, setUser } = useAuthStore();
@@ -51,10 +22,7 @@ export default function UsersScreen() {
   const [errorText, setErrorText] = useState('');
   const [adminView, setAdminView] = useState(false);
 
-  const totalProperties = useMemo(
-    () => rows.reduce((total, row) => total + parseNumber(row.propertiesCount), 0),
-    [rows]
-  );
+  const totalProperties = useMemo(() => calculateTotalPropertiesFromUsers(rows), [rows]);
 
   const loadUsers = async () => {
     setErrorText('');
@@ -82,7 +50,7 @@ export default function UsersScreen() {
     try {
       const payload = await getPropertiesApi({ adminView: true, perPage: 250 });
       const properties = extractProperties(payload);
-      setRows(buildUserRows(properties));
+      setRows(aggregateUsersByProperties(properties));
     } catch (error) {
       const details = getApiErrorDetails(error);
       setErrorText((prev) => (prev ? `${prev} | /agent/properties -> ${details.message}` : details.message));
@@ -135,16 +103,7 @@ export default function UsersScreen() {
           </UiCard>
         ) : (
           <>
-            <UiCard style={styles.summaryCard}>
-              <View style={styles.kpiItem}>
-                <Text style={styles.kpiValue}>{rows.length}</Text>
-                <Text style={styles.kpiLabel}>Usuarios con inmuebles</Text>
-              </View>
-              <View style={styles.kpiItem}>
-                <Text style={styles.kpiValue}>{totalProperties}</Text>
-                <Text style={styles.kpiLabel}>Total de inmuebles</Text>
-              </View>
-            </UiCard>
+            <UsersSummary totalUsers={rows.length} totalProperties={totalProperties} />
 
             {errorText ? (
               <UiCard style={styles.card}>
@@ -155,13 +114,7 @@ export default function UsersScreen() {
 
             {rows.length ? (
               rows.map((row) => (
-                <UiCard key={`user-${row.userId}`} style={styles.rowCard}>
-                  <View>
-                    <Text style={styles.rowName}>{row.displayName}</Text>
-                    <Text style={styles.rowMeta}>ID: {row.userId}</Text>
-                  </View>
-                  <Text style={styles.rowCount}>{row.propertiesCount}</Text>
-                </UiCard>
+                <UserCard key={`user-${row.userId}`} user={row} />
               ))
             ) : (
               <UiCard style={styles.card}>
@@ -213,43 +166,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     ...typography.h2,
     marginBottom: spacing.xxs,
-  },
-  summaryCard: {
-    marginBottom: spacing.md,
-    flexDirection: 'row',
-  },
-  kpiItem: {
-    flex: 1,
-  },
-  kpiValue: {
-    color: colors.textPrimary,
-    ...typography.h1,
-  },
-  kpiLabel: {
-    marginTop: spacing.xxs / 2,
-    color: colors.textMuted,
-    ...typography.captionStrong,
-  },
-  rowCard: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  rowName: {
-    color: colors.textPrimary,
-    ...typography.bodyStrong,
-  },
-  rowMeta: {
-    color: colors.textMuted,
-    ...typography.caption,
-    marginTop: spacing.xxs / 4,
-  },
-  rowCount: {
-    color: colors.primary,
-    ...typography.h1,
   },
   errorText: {
     color: colors.danger,
