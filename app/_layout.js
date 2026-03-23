@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../components/ui';
 import { useAuthStore } from '../store/useAuthStore';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function RootLayout() {
   const { initialized, initAuth } = useAuthStore();
+  const { expoPushToken } = useNotifications(); // Agent: DeepSeek - Startup notifications
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {

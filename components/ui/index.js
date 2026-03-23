@@ -6,4 +6,5 @@ export { CheckboxField, CheckboxGrid } from './CheckboxField';
 export { default as SwitchField } from './SwitchField';
 export { default as Button } from './Button';
 export { default as SectionHeader } from './SectionHeader';
+export { NotificationBadge } from './NotificationBadge';
 export * from './tokens';
