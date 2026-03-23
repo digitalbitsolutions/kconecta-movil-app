@@ -1,83 +1,77 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, View, Dimensions } from 'react-native';
 import { colors, layout, radius, sizing, spacing, typography } from '../../ui';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CAROUSEL_WIDTH = SCREEN_WIDTH - (spacing.lg * 2);
 
 export default function PropertyImageCarousel({ images = [] }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const safeImages = useMemo(() => (Array.isArray(images) ? images.filter(Boolean) : []), [images]);
+  const scrollViewRef = useRef(null);
+  
+  const safeImages = React.useMemo(() => (Array.isArray(images) ? images.filter(Boolean) : []), [images]);
   const imageCount = safeImages.length;
   const hasMultipleImages = imageCount > 1;
-  const currentImage = safeImages[activeIndex] || safeImages[0] || '';
 
-  useEffect(() => {
-    if (!imageCount) {
-      setActiveIndex(0);
-      return;
+  const handleScroll = (event) => {
+    const xOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(xOffset / CAROUSEL_WIDTH);
+    if (index !== activeIndex) {
+      setActiveIndex(index);
     }
-
-    if (activeIndex > imageCount - 1) {
-      setActiveIndex(imageCount - 1);
-    }
-  }, [activeIndex, imageCount]);
-
-  const goToIndex = (nextIndex) => {
-    if (!imageCount) return;
-    const boundedIndex = Math.max(0, Math.min(nextIndex, imageCount - 1));
-    setActiveIndex(boundedIndex);
   };
 
   return (
     <View style={styles.wrap}>
       <View style={styles.viewport}>
-        {currentImage ? (
-          <Image key={currentImage} source={{ uri: currentImage }} style={styles.image} resizeMode="cover" />
+        {imageCount > 0 ? (
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.scroll}
+          >
+            {safeImages.map((uri, index) => (
+              <View key={`${uri}-${index}`} style={styles.imageContainer}>
+                <Image 
+                  source={{ uri }} 
+                  style={styles.image} 
+                  resizeMode="cover" 
+                />
+              </View>
+            ))}
+          </ScrollView>
         ) : (
           <View style={styles.fallback}>
             <Text style={styles.fallbackText}>Sin imagenes disponibles</Text>
           </View>
         )}
+
+        {/* Contador flotante (opcional, para claridad) */}
+        {hasMultipleImages && (
+          <View style={styles.floatingCounter}>
+            <Text style={styles.counterText}>{activeIndex + 1} / {imageCount}</Text>
+          </View>
+        )}
       </View>
 
-      {imageCount ? (
-        <View style={styles.navigationWrap}>
-          <View style={styles.navigationRow}>
-            <TouchableOpacity
-              style={[styles.navigationButton, activeIndex === 0 ? styles.navigationButtonDisabled : null]}
-              onPress={() => goToIndex(activeIndex - 1)}
-              disabled={!hasMultipleImages || activeIndex === 0}
-            >
-              <Text style={styles.navigationButtonText}>Anterior</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.counterText}>
-              {Math.min(activeIndex + 1, imageCount)} / {imageCount}
-            </Text>
-
-            <TouchableOpacity
+      {/* Paginación por puntos (dots) */}
+      {hasMultipleImages && (
+        <View style={styles.dotsRow}>
+          {safeImages.map((_, index) => (
+            <View
+              key={`dot-${index}`}
               style={[
-                styles.navigationButton,
-                activeIndex === imageCount - 1 ? styles.navigationButtonDisabled : null,
+                styles.dot,
+                index === activeIndex ? styles.dotActive : null
               ]}
-              onPress={() => goToIndex(activeIndex + 1)}
-              disabled={!hasMultipleImages || activeIndex === imageCount - 1}
-            >
-              <Text style={styles.navigationButtonText}>Siguiente</Text>
-            </TouchableOpacity>
-          </View>
-
-          {hasMultipleImages ? (
-            <View style={styles.dotsRow}>
-              {safeImages.map((image, index) => (
-                <TouchableOpacity
-                  key={`${image}-dot-${index}`}
-                  onPress={() => goToIndex(index)}
-                  style={[styles.dot, index === activeIndex ? styles.dotActive : null]}
-                />
-              ))}
-            </View>
-          ) : null}
+            />
+          ))}
         </View>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -92,6 +86,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surfaceStrong,
+    position: 'relative',
+  },
+  scroll: {
+    flex: 1,
+  },
+  imageContainer: {
+    width: CAROUSEL_WIDTH,
+    height: '100%',
   },
   image: {
     width: '100%',
@@ -108,49 +110,35 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  navigationWrap: {
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  navigationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  navigationButton: {
-    minWidth: sizing.badgeMinWidth * 2,
+  floatingCounter: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
     borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navigationButtonDisabled: {
-    opacity: 0.45,
-  },
-  navigationButtonText: {
-    ...typography.captionStrong,
-    color: colors.textInverse,
   },
   counterText: {
     ...typography.captionStrong,
-    color: colors.textPrimary,
+    color: 'white',
+    fontSize: 10,
   },
   dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: spacing.sm,
     gap: spacing.xs,
   },
   dot: {
-    width: sizing.dot,
-    height: sizing.dot,
-    borderRadius: radius.full,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.surfaceStrong,
   },
   dotActive: {
     backgroundColor: colors.accent,
+    width: 12,
   },
 });

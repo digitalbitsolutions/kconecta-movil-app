@@ -1,4 +1,4 @@
-import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, layout, radius, spacing, typography } from '../ui';
 import {
@@ -100,7 +100,10 @@ export default function PropertyCardCompact({
           </View>
         )}
 
-        <View style={styles.heroShade} />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.7)']}
+          style={styles.heroShade}
+        />
 
         <View style={[styles.statusBadge, { backgroundColor: statusColors.backgroundColor }]}>
           <Text style={[styles.statusText, { color: statusColors.textColor }]}>{status}</Text>

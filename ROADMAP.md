@@ -112,8 +112,8 @@
 - [x] Guarda de seguridad `hasActiveUploads` para evitar estados inconsistentes (Auditada por Mistral).
 
 ## Fase 10 - Refactoring y Hardening Modular (Abierta)
-// Agent: Gemma (Architect)
-- [ ] Refactor de `Step2Media.tsx` en sub-componentes especializados (Qwen).
-- [ ] Auditoría de seguridad del mapeo de datos en Perfil y CRM (Mistral).
+// Agent: Gemma (Architect) - FOCO: Frontend Nativo (CRM Legado es solo lectura)
+- [ ] Refactor de `Step2Media.tsx` en sub-componentes (Completado).
+- [ ] Auditoría de seguridad del mapeo de datos en Perfil (CLIENT-SIDE) (Mistral).
 - [ ] Refinamiento visual: Gradients y micro-animaciones en Cards (DeepSeek).
 - [ ] Implementar sistema de temas: Modo Oscuro / Claro inicial (Qwen).

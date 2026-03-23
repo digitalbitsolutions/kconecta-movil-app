@@ -164,4 +164,6 @@ Este plan define el flujo de trabajo con modelos locales para reducir costo de t
 
 ## Orden Recomendado De Cierre
 1. Monitorizar incidencias menores post-QA
-2. Abrir nuevo bloque solo ante bug reproducible o cambio funcional nuevo
+2. **NUEVO**: No implementar ampliación de imágenes (Full Read-Only) para optimizar renderizados.
+3. **NUEVO**: Usar solo Sliders horizontales (CSS/ScrollView) para galerías de media.
+4. Abrir nuevo bloque solo ante bug reproducible o cambio funcional nuevo
