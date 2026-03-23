@@ -114,3 +114,11 @@
 - [x] Integrar acciones rapidas de contacto (WhatsApp/Llamada) desde la ficha de detalle.
 - [x] Visualizar historial de actividad de contactos por propiedad.
 - [x] Incorporar widget de "Nuevos Contactos" en Dashboard movil.
+
+## Fase 9 - Gestión de Media Avanzada (Cerrado)
+// Agent: Gemma (Architect)
+- [x] Refactor del selector de imágenes para permitir selección múltiple.
+- [x] Implementación de **Async Preview & Upload Queue** (carga asíncrona).
+- [x] Soporte nativo para **Reordenación de Galería** con persistencia en CRM.
+- [x] Lógica de **Borrado Remoto Instantáneo** y sincronización de IDs.
+- [x] Auditoría de seguridad post-implementación (Mistral).
