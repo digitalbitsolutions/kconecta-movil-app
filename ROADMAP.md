@@ -88,12 +88,25 @@
     - contacto alineado a `Ultima actualizacion`.
   - Bloque de QA de detalle cerrado con contraste CRM + validacion funcional por rol + build OK.
 
-## Fase 7 - Hardening Post-QA (En progreso)
+## Fase 7 - Hardening Post-QA (Completado)
+// Agent: Gemma
 - [x] Endurecer visibilidad UI por rol en shell, detalle y preview.
-- [x] Verificar limpieza de la cuenta QA temporal usada para la validacion no-admin.
-  - La cuenta temporal ya no autentica en API (`401`), dejando el entorno operativo limpio.
-- [x] Eliminar defaults inseguros de autenticacion en la app (`login` sin credenciales precargadas).
-- [x] Alinear loaders y pantallas base criticas (`login`, layouts, `Mi perfil`) con tokens del design system.
-- [x] Reducir hardcodes visibles en `Dashboard` y `Usuarios`, manteniendo la logica funcional intacta.
-- [x] Reducir hardcodes visibles y artefactos de encoding en cards legacy de propiedades (`PropertyCardCompact`, `PropertyCardDetailed`, helpers).
-- [ ] Revisar solo residuos menores post-polish si aparece una nueva necesidad visual puntual.
+- [x] Alinear shell (`BackofficeNavShell`), layouts y pantallas base con tokens centrales.
+- [x] Reducir hardcodes en Dashboard, Usuarios, Perfil y Cards de inmuebles.
+- [x] Bateria de tests unitarios (36 passed) para helpers en `/components/`.
+- [x] Marcaje de componentes refactorizados con marcas `// DONE (Codex)`.
+
+## Fase 8 - Gestión de Leads y Seguimiento (Completado)
+// Agent: Gemma
+- [x] Implementar listado de Prospectos/Leads vinculados a inmuebles (Endpoint API CRM).
+- [x] Integrar acciones rapidas de contacto (WhatsApp/Llamada) desde la ficha de detalle.
+- [x] Visualizar historial de actividad de contactos por propiedad.
+- [x] Mejorar el Dashboard con un widget de "Leads Recientes" modular.
+
+## Fase 9 - Gestión de Media Avanzada (Completado)
+// Agent: Gemma (Architect)
+- [x] Refactor del selector de imágenes para permitir selección múltiple.
+- [x] Implementación de **Async Preview & Upload Queue** (carga asíncrona).
+- [x] Soporte nativo para **Reordenación de Galería** con persistencia en CRM.
+- [x] Lógica de **Borrado Remoto Instantáneo** y sincronización de IDs.
+- [x] Guarda de seguridad `hasActiveUploads` para evitar estados inconsistentes (Auditada por Mistral).
