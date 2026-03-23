@@ -107,3 +107,10 @@
   - `components/property/detail/propertyDetailMapper.js` como adaptador de payload por tipo.
   - `components/property/detail/LocalPremisesDetailView.js`, `HouseChaletDetailView.js`, `ApartmentDetailView.js`, `RusticHouseDetailView.js`, `GarageDetailView.js` y `LandDetailView.js` como referencias de composicion modular.
   - `app/(app)/property/[id].js` y `app/(app)/property/preview/[id].js` deben resolver por `type_id` y renderizar variante especifica.
+
+## Fase 8 - Gestion de Leads (Cerrado)
+// Agent: Gemma
+- [x] Implementar listado de Prospectos/Leads vinculados a inmuebles (Endpoint API CRM).
+- [x] Integrar acciones rapidas de contacto (WhatsApp/Llamada) desde la ficha de detalle.
+- [x] Visualizar historial de actividad de contactos por propiedad.
+- [x] Incorporar widget de "Nuevos Contactos" en Dashboard movil.
