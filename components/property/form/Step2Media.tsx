@@ -1,8 +1,10 @@
+// Agent: DeepSeek
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { usePropertyForm } from './PropertyFormContext';
+import { uploadMediaApi, deleteMediaApi } from '../../../api/client';
 import { 
   Card as UiCard, 
   SectionHeader, 
@@ -11,13 +13,58 @@ import {
   radius as uiRadius,
   typography as uiTypography
 } from '../../ui';
+import { MediaAsset } from './types';
 
 export const Step2Media: React.FC = () => {
   const { 
     coverImage, setCoverImage, 
     galleryImages, setGalleryImages, 
-    videoAsset, setVideoAsset 
+    videoAsset, setVideoAsset,
+    removedImageIds, setRemovedImageIds,
+    form, isEditMode
   } = usePropertyForm();
+
+  // Agent: DeepSeek - Lógica de subida inmediata para galería
+  const handleGalleryUpload = async (assets: any[]) => {
+    const propertyId = String(form.id || '');
+    if (!propertyId) {
+      // Si es alta nueva, solo guardamos local
+      const newImages = assets.map(asset => ({
+        uri: asset.uri,
+        name: asset.fileName || `img_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+        status: 'local' as const
+      }));
+      setGalleryImages([...galleryImages, ...newImages]);
+      return;
+    }
+
+    // Si es edición, subimos asíncronamente
+    const newImages = assets.map(asset => ({
+      uri: asset.uri,
+      name: asset.fileName || `img_${Date.now()}.jpg`,
+      type: 'image/jpeg',
+      status: 'uploading' as const,
+      progress: 0
+    }));
+
+    setGalleryImages((prev: MediaAsset[]) => [...prev, ...newImages]);
+
+    for (const img of newImages) {
+      try {
+        const file = { uri: img.uri, name: img.name, type: img.type };
+        const response = await uploadMediaApi(propertyId, file, (progress: number) => {
+          setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, progress } : i));
+        });
+        
+        setGalleryImages((prev: MediaAsset[]) => prev.map(i => 
+          i.uri === img.uri ? { ...i, serverId: response.id, status: 'synced' as const } : i
+        ));
+      } catch (err) {
+        setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, status: 'error' as const } : i));
+      }
+    }
+  };
 
   const pickImage = async (type: 'cover' | 'gallery' | 'video') => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -35,23 +82,36 @@ export const Step2Media: React.FC = () => {
     if (!result.canceled) {
       if (type === 'cover') {
         const asset = result.assets[0];
-        setCoverImage({ uri: asset.uri, name: asset.fileName || 'cover.jpg', type: 'image/jpeg' });
+        setCoverImage({ uri: asset.uri, name: asset.fileName || 'cover.jpg', type: 'image/jpeg', status: 'local' });
       } else if (type === 'gallery') {
-        const newImages = result.assets.map(asset => ({
-          uri: asset.uri,
-          name: asset.fileName || `image_${Date.now()}.jpg`,
-          type: 'image/jpeg'
-        }));
-        setGalleryImages([...galleryImages, ...newImages]);
+        await handleGalleryUpload(result.assets);
       } else if (type === 'video') {
         const asset = result.assets[0];
-        setVideoAsset({ uri: asset.uri, name: asset.fileName || 'video.mp4', type: 'video/mp4' });
+        setVideoAsset({ uri: asset.uri, name: asset.fileName || 'video.mp4', type: 'video/mp4', status: 'local' });
       }
     }
   };
 
-  const removeGalleryImage = (uri: string) => {
-    setGalleryImages(galleryImages.filter(img => img.uri !== uri));
+  const removeGalleryImage = async (img: any) => {
+    if (img.serverId) {
+      setGalleryImages((prev: MediaAsset[]) => prev.map(i => i.uri === img.uri ? { ...i, status: 'deleting' } : i));
+      try {
+        await deleteMediaApi(String(form.id), img.serverId);
+        setRemovedImageIds((prev: (string|number)[]) => [...prev, img.serverId]);
+      } catch (err) {
+        Toast.show({ type: 'error', text1: 'No se pudo borrar del servidor' });
+      }
+    }
+    setGalleryImages(galleryImages.filter(i => i.uri !== img.uri));
+  };
+
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    const newImages = [...galleryImages];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+    
+    [newImages[index], newImages[targetIndex]] = [newImages[targetIndex], newImages[index]];
+    setGalleryImages(newImages);
   };
 
   return (
@@ -59,7 +119,7 @@ export const Step2Media: React.FC = () => {
       <SectionHeader title="Media" subtitle="Imagenes y videos del inmueble" />
 
       {/* Cover Image */}
-      <Text style={styles.label}>Imagen de portada</Text>
+      <Text style={styles.label}>Imagen de portada (Lider)</Text>
       <TouchableOpacity 
         style={styles.mediaPlaceholder} 
         onPress={() => pickImage('cover')}
@@ -67,30 +127,46 @@ export const Step2Media: React.FC = () => {
         {coverImage ? (
           <Image source={{ uri: coverImage.uri }} style={styles.fullImage} />
         ) : (
-          <Text style={styles.placeholderText}>+ Seleccionar portada</Text>
+          <Text style={styles.placeholderText}>+ Definir imagen principal</Text>
         )}
       </TouchableOpacity>
 
       {/* Gallery */}
-      <Text style={[styles.label, { marginTop: uiSpacing.md }]}>Galeria de imagenes</Text>
+      <View style={styles.galleryHeader}>
+        <Text style={styles.label}>Galeria de imagenes</Text>
+        <Text style={styles.countBadge}>{galleryImages.length} fotos</Text>
+      </View>
+      
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-        {galleryImages.map((img, idx) => (
-          <View key={`${img.uri}-${idx}`} style={styles.galleryItem}>
-            <Image source={{ uri: img.uri }} style={styles.galleryImage} />
-            <TouchableOpacity 
-              style={styles.removeBadge} 
-              onPress={() => removeGalleryImage(img.uri)}
-            >
-              <Text style={styles.removeBadgeText}>X</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
         <TouchableOpacity 
           style={styles.galleryAdd} 
           onPress={() => pickImage('gallery')}
         >
-          <Text style={styles.placeholderText}>+</Text>
+          <Text style={styles.addIcon}>+</Text>
+          <Text style={styles.addText}>Añadir</Text>
         </TouchableOpacity>
+
+        {galleryImages.map((img, idx) => (
+          <View key={`${img.uri}-${idx}`} style={styles.galleryItem}>
+            <Image source={{ uri: img.uri }} style={styles.galleryImage} />
+            
+            <View style={styles.itemActions}>
+              {idx > 0 && (
+                <TouchableOpacity style={styles.actionBtn} onPress={() => moveImage(idx, 'left')}>
+                  <Text style={styles.actionIcon}>←</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.actionBtn} onPress={() => removeGalleryImage(img.uri)}>
+                <Text style={styles.actionIcon}>❌</Text>
+              </TouchableOpacity>
+              {idx < galleryImages.length - 1 && (
+                <TouchableOpacity style={styles.actionBtn} onPress={() => moveImage(idx, 'right')}>
+                  <Text style={styles.actionIcon}>→</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
 
       {/* Video */}
@@ -186,5 +262,46 @@ const styles = StyleSheet.create({
   videoText: {
     ...(uiTypography.caption as any),
     textAlign: 'center',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: uiSpacing.md,
+    marginBottom: uiSpacing.xs,
+  },
+  countBadge: {
+    ...(uiTypography.captionStrong as any),
+    color: uiColors.accentStrong,
+    backgroundColor: uiColors.surfaceAccent,
+    paddingHorizontal: uiSpacing.sm,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  addIcon: {
+    fontSize: 24,
+    color: uiColors.textMuted,
+  },
+  addText: {
+    ...(uiTypography.caption as any),
+    color: uiColors.textMuted,
+    fontSize: 10,
+  },
+  itemActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  actionBtn: {
+    paddingHorizontal: 6,
+  },
+  actionIcon: {
+    color: 'white',
+    fontSize: 12,
   },
 });

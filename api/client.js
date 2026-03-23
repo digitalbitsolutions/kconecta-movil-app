@@ -350,6 +350,38 @@ export const getLeadsApi = async (options = {}) => {
   );
   return response.data;
 };
+// Agent: DeepSeek
+export const uploadMediaApi = async (propertyId, file, onProgress = null) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('property_id', propertyId);
+
+  const response = await withBaseUrlFallback(() => 
+    apiClient.post(`/agent/properties/${propertyId}/media`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress(progressEvent.loaded / progressEvent.total);
+        }
+      }
+    })
+  );
+  return response.data;
+};
+
+export const deleteMediaApi = async (propertyId, imageId) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.delete(`/agent/properties/${propertyId}/media/${imageId}`)
+  );
+  return response.data;
+};
+
+export const updateMediaOrderApi = async (propertyId, orderMap) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.post(`/agent/properties/${propertyId}/media/reorder`, { order: orderMap })
+  );
+  return response.data;
+};
 
 export const processAgentTask = async (taskType, input) => {
   try {

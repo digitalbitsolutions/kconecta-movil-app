@@ -14,8 +14,11 @@ export const Step2Navigation: React.FC = () => {
     submitForm, 
     submitting, 
     errorText, 
-    isEditMode 
+    isEditMode,
+    hasActiveUploads 
   } = usePropertyForm();
+
+  const isBusy = submitting || hasActiveUploads;
 
   return (
     <View style={styles.container}>
@@ -26,9 +29,9 @@ export const Step2Navigation: React.FC = () => {
       ) : null}
 
       <UiButton
-        label={submitting ? 'Guardando...' : (isEditMode ? 'Actualizar inmueble' : 'Publicar inmueble')}
+        label={submitting ? 'Guardando...' : hasActiveUploads ? 'Subiendo archivos...' : (isEditMode ? 'Actualizar inmueble' : 'Publicar inmueble')}
         onPress={submitForm}
-        disabled={submitting}
+        disabled={isBusy}
         variant="primary"
         style={styles.mainButton}
       />
@@ -36,15 +39,15 @@ export const Step2Navigation: React.FC = () => {
       <UiButton
         label="Volver al paso 1"
         onPress={() => setStep(1)}
-        disabled={submitting}
+        disabled={isBusy}
         variant="ghost"
         style={styles.backButton}
       />
       
-      {submitting && (
+      {isBusy && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color={uiColors.accent} />
-          <Text style={styles.overlayText}>Procesando solicitud...</Text>
+          <Text style={styles.overlayText}>{hasActiveUploads ? 'Sincronizando media...' : 'Procesando solicitud...'}</Text>
         </View>
       )}
     </View>
@@ -65,7 +68,7 @@ const styles = StyleSheet.create({
     borderColor: '#FEB2B2',
   },
   errorText: {
-    ...uiTypography.caption,
+    ...(uiTypography.caption as any),
     color: '#C53030',
     textAlign: 'center',
   },
