@@ -3,48 +3,12 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 import { getApiErrorDetails, getMeApi } from '../../../api/client';
 import { Button as UiButton, Card as UiCard, colors, radius, spacing, typography } from '../../../components/ui';
 import { useAuthStore } from '../../../store/useAuthStore';
-
-const parseNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-const extractUser = (payload) => {
-  if (payload?.user) return payload.user;
-  if (payload?.data?.user) return payload.data.user;
-  if (payload?.data?.id) return payload.data;
-  if (payload?.id) return payload;
-  return null;
-};
-
-const resolveRole = (rawUser) => {
-  const roleName = pickString(rawUser?.user_level_name, rawUser?.role, rawUser?.level_name);
-  if (roleName) return roleName;
-
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return 'Administrador';
-  if (levelId === 2) return 'Usuario libre';
-  if (levelId === 3) return 'Usuario premium';
-  if (levelId === 4) return 'Proveedor de servicio';
-  if (levelId === 5) return 'Agente inmobiliario';
-  return 'Usuario';
-};
-
-const ProfileField = ({ label, value }) => (
-  <View style={styles.fieldRow}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    <Text style={styles.fieldValue}>{value || '-'}</Text>
-  </View>
-);
+import { 
+  pickString, 
+  extractUser, 
+  userLevelName 
+} from '../../../utils/dataMappers';
+import { ProfileField } from '../../../components/profile/ProfileFields';
 
 export default function ProfileScreen() {
   const { user, setUser, logout } = useAuthStore();
@@ -63,7 +27,7 @@ export default function ProfileScreen() {
       name: pickString(fullName, source.user_name, source.name),
       email: pickString(source.email),
       phone: pickString(source.phone, source.phone_number),
-      role: resolveRole(source),
+      role: userLevelName(source),
       level: pickString(source.user_level_id, source.level_id, source.role_id),
       company: pickString(source.company_name, source.agency_name),
     };
@@ -92,7 +56,6 @@ export default function ProfileScreen() {
         setLoading(false);
       }
     };
-
     bootstrap();
   }, []);
 
@@ -177,20 +140,7 @@ const styles = StyleSheet.create({
   },
   card: {
     paddingVertical: spacing.sm,
-  },
-  fieldRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingVertical: spacing.md,
-  },
-  fieldLabel: {
-    color: colors.textMuted,
-    ...typography.captionStrong,
-  },
-  fieldValue: {
-    marginTop: spacing.xs / 2,
-    color: colors.textPrimary,
-    ...typography.h3,
+    marginBottom: spacing.lg,
   },
   errorCard: {
     backgroundColor: colors.dangerSoft,

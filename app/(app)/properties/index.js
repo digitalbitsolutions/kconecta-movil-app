@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,31 +14,20 @@ import { apiClient, getApiErrorDetails, getMeApi, getPropertiesApi } from '../..
 import { useAuthStore } from '../../../store/useAuthStore';
 import { PropertyCardCompact } from '../../../components/property';
 import { canManagePropertiesUser, isAdminUser } from '../../../utils/userPermissions';
+import { colors, spacing, typography, radius } from '../../../components/ui';
 import {
   extractProperties,
   extractUser,
-  isPublishedProperty,
   parseNumber,
-  pickString,
-  propertyCategory,
   propertyId,
-  propertyTimestamp,
-  propertyType,
 } from '../../../utils/dataMappers';
 
-const statusLabel = (rawStatus) => {
-  const lowered = pickString(rawStatus).toLowerCase();
-  if (!lowered) return 'Pendiente';
-  if (lowered.includes('public') || lowered === '1' || lowered === 'active') return 'Publicado';
-  if (lowered.includes('pend') || lowered === '0' || lowered === 'inactive') return 'Pendiente';
-  return rawStatus;
-};
-
-const FilterChip = ({ label, selected, onPress }) => (
-  <TouchableOpacity onPress={onPress} style={[styles.filterChip, selected ? styles.filterChipActive : null]}>
-    <Text style={[styles.filterChipText, selected ? styles.filterChipTextActive : null]}>{label}</Text>
-  </TouchableOpacity>
-);
+import { 
+  filterProperties, 
+  getFilterOptions, 
+  resolveStatusLabel 
+} from '../../../components/property/list/propertyListHelpers';
+import { PropertyFilters } from '../../../components/property/list/PropertyFilters';
 
 export default function PropertiesScreen() {
   const router = useRouter();
@@ -50,73 +38,26 @@ export default function PropertiesScreen() {
   const [errorText, setErrorText] = useState('');
   const [canManage, setCanManage] = useState(true);
   const [adminView, setAdminView] = useState(false);
+  
+  // Estados de Filtro
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [typeFilter, setTypeFilter] = useState('Todos');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
 
-  const sortedProperties = useMemo(() => {
-    const cloned = [...properties];
-    cloned.sort((left, right) => propertyTimestamp(right).localeCompare(propertyTimestamp(left)));
-    return cloned;
-  }, [properties]);
-
-  const statusOptions = useMemo(() => {
-    const options = new Set(['Todos']);
-    sortedProperties.forEach((property) => {
-      const status = pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente');
-      options.add(statusLabel(status));
-    });
-    return [...options];
-  }, [sortedProperties]);
-
-  const typeOptions = useMemo(() => {
-    const options = new Set(['Todos']);
-    sortedProperties.forEach((property) => options.add(propertyType(property)));
-    return [...options];
-  }, [sortedProperties]);
-
-  const categoryOptions = useMemo(() => {
-    const options = new Set(['Todas']);
-    sortedProperties.forEach((property) => options.add(propertyCategory(property)));
-    return [...options];
-  }, [sortedProperties]);
+  const { statusOptions, typeOptions, categoryOptions } = useMemo(
+    () => getFilterOptions(properties), 
+    [properties]
+  );
 
   const filteredProperties = useMemo(() => {
-    const search = pickString(searchText).toLowerCase();
-
-    return sortedProperties.filter((property) => {
-      const title = pickString(property?.title ?? property?.name ?? property?.reference).toLowerCase();
-      const reference = pickString(property?.reference).toLowerCase();
-      
-      const firstName = pickString(property?.user_first_name, property?.owner_first_name);
-      const lastName = pickString(property?.user_last_name, property?.owner_last_name);
-      const fullName = `${firstName} ${lastName}`.trim();
-      const owner = pickString(fullName, property?.user_name, property?.owner_name, 'Sin propietario').toLowerCase();
-
-      const status = statusLabel(pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente'));
-      const type = propertyType(property);
-      const category = propertyCategory(property);
-
-      if (search && !title.includes(search) && !reference.includes(search) && !owner.includes(search)) {
-        return false;
-      }
-
-      if (statusFilter !== 'Todos' && status !== statusFilter) {
-        return false;
-      }
-
-      if (typeFilter !== 'Todos' && type !== typeFilter) {
-        return false;
-      }
-
-      if (categoryFilter !== 'Todas' && category !== categoryFilter) {
-        return false;
-      }
-
-      return true;
+    return filterProperties(properties, { 
+      searchText, 
+      statusFilter, 
+      typeFilter, 
+      categoryFilter 
     });
-  }, [sortedProperties, searchText, statusFilter, typeFilter, categoryFilter]);
+  }, [properties, searchText, statusFilter, typeFilter, categoryFilter]);
 
   const resetFilters = () => {
     setSearchText('');
@@ -170,7 +111,6 @@ export default function PropertiesScreen() {
         setLoading(false);
       }
     };
-
     bootstrap();
   }, []);
 
@@ -282,63 +222,25 @@ export default function PropertiesScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.filtersCard}>
-          <Text style={styles.filtersTitle}>Listado</Text>
-          <TextInput
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Buscar por titulo, referencia o usuario"
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
-          />
-
-          <Text style={styles.filterGroupLabel}>Estado</Text>
-          <View style={styles.chipsWrap}>
-            {statusOptions.map((option) => (
-              <FilterChip
-                key={`status-${option}`}
-                label={option}
-                selected={statusFilter === option}
-                onPress={() => setStatusFilter(option)}
-              />
-            ))}
-          </View>
-
-          <Text style={styles.filterGroupLabel}>Tipo</Text>
-          <View style={styles.chipsWrap}>
-            {typeOptions.map((option) => (
-              <FilterChip
-                key={`type-${option}`}
-                label={option}
-                selected={typeFilter === option}
-                onPress={() => setTypeFilter(option)}
-              />
-            ))}
-          </View>
-
-          <Text style={styles.filterGroupLabel}>Categoria</Text>
-          <View style={styles.chipsWrap}>
-            {categoryOptions.map((option) => (
-              <FilterChip
-                key={`category-${option}`}
-                label={option}
-                selected={categoryFilter === option}
-                onPress={() => setCategoryFilter(option)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.filtersFooter}>
-            <Text style={styles.resultsCount}>{filteredProperties.length} inmuebles</Text>
-            <TouchableOpacity onPress={resetFilters} style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>Limpiar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <PropertyFilters 
+          searchText={searchText}
+          setSearchText={setSearchText}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          statusOptions={statusOptions}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          typeOptions={typeOptions}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          categoryOptions={categoryOptions}
+          resultsCount={filteredProperties.length}
+          onReset={resetFilters}
+        />
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.note}>Cargando propiedades...</Text>
           </View>
         ) : !canManage ? (
@@ -386,128 +288,43 @@ export default function PropertiesScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   content: {
-    padding: 14,
-    paddingBottom: 26,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   titleWrap: {
     flex: 1,
-    paddingRight: 10,
+    paddingRight: spacing.sm,
   },
   title: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
+    color: colors.textPrimary,
+    ...typography.h1,
   },
   subtitle: {
     marginTop: 4,
-    color: '#475569',
-    fontSize: 14,
+    color: colors.textSoft,
+    ...typography.body,
     fontWeight: '600',
   },
   addButton: {
     alignSelf: 'center',
-    backgroundColor: '#14B8A6',
-    borderRadius: 999,
-    paddingHorizontal: 16,
+    backgroundColor: colors.success,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
     paddingVertical: 10,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    ...typography.label,
     fontWeight: '800',
-  },
-  filtersCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    marginBottom: 12,
-  },
-  filtersTitle: {
-    color: '#0F172A',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  searchInput: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    color: '#0F172A',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filterGroupLabel: {
-    marginTop: 10,
-    marginBottom: 6,
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  filterChip: {
-    marginHorizontal: 4,
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-  },
-  filterChipActive: {
-    backgroundColor: '#DBEAFE',
-    borderColor: '#60A5FA',
-  },
-  filterChipText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  filterChipTextActive: {
-    color: '#1D4ED8',
-  },
-  filtersFooter: {
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultsCount: {
-    color: '#0F172A',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  clearBtn: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#FFFFFF',
-  },
-  clearBtnText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '700',
   },
   centered: {
     paddingTop: 24,
@@ -516,27 +333,26 @@ const styles = StyleSheet.create({
   },
   note: {
     marginTop: 8,
-    color: '#64748B',
-    fontSize: 14,
+    color: colors.textMuted,
+    ...typography.body,
     lineHeight: 19,
   },
   noticeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
+    borderColor: colors.border,
+    padding: spacing.md,
     marginBottom: 10,
   },
   noticeTitle: {
-    color: '#0F172A',
-    fontWeight: '800',
-    fontSize: 18,
+    color: colors.textPrimary,
+    ...typography.h2,
     marginBottom: 6,
   },
   errorText: {
-    color: '#B91C1C',
-    fontSize: 13,
+    color: colors.danger,
+    ...typography.label,
     lineHeight: 18,
   },
 });
