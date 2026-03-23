@@ -383,6 +383,20 @@ export const updateMediaOrderApi = async (propertyId, orderMap) => {
   return response.data;
 };
 
+export const getNotificationsApi = async (params = {}) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.get('/agent/notifications', { params })
+  );
+  return response.data;
+};
+
+export const markNotificationReadApi = async (notificationId) => {
+  const response = await withBaseUrlFallback(() => 
+    apiClient.patch(`/agent/notifications/${notificationId}/read`)
+  );
+  return response.data;
+};
+
 export const processAgentTask = async (taskType, input) => {
   try {
     const response = await withBaseUrlFallback(() =>
