@@ -14,82 +14,21 @@ import { useRouter } from 'expo-router';
 import { apiClient, getApiErrorDetails, getMeApi, getPropertiesApi } from '../../../api/client';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { PropertyCardCompact } from '../../../components/property';
-
-const parseNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-const isAdminUser = (rawUser) => {
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return true;
-  const roleText = pickString(rawUser?.role, rawUser?.user_level_name).toLowerCase();
-  return roleText.includes('admin');
-};
-
-const canManagePropertiesUser = (rawUser) => {
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  return levelId === 1 || levelId === 2 || levelId === 3 || levelId === 5;
-};
-
-const extractUser = (payload) => {
-  if (payload?.user) return payload.user;
-  if (payload?.data?.user) return payload.data.user;
-  if (payload?.data?.id) return payload.data;
-  if (payload?.id) return payload;
-  return null;
-};
-
-const extractProperties = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.data?.data)) return payload.data.data;
-  if (Array.isArray(payload?.properties)) return payload.properties;
-  if (Array.isArray(payload?.result)) return payload.result;
-  return [];
-};
-
-const resolveId = (property) =>
-  pickString(property?.id, property?.property_id, property?.propertyId, property?.reference);
-
-const resolveOwner = (property) => {
-  const firstName = pickString(property?.user_first_name, property?.owner_first_name);
-  const lastName = pickString(property?.user_last_name, property?.owner_last_name);
-  const fullName = `${firstName} ${lastName}`.trim();
-  return pickString(fullName, property?.user_name, property?.owner_name, 'Sin propietario');
-};
-
-const resolveDate = (property) =>
-  pickString(property?.updated_at, property?.created_at, property?.date, property?.published_at);
-
-const normalizeText = (value) => pickString(value).toLowerCase();
-
-const resolveType = (property) =>
-  pickString(property?.type_name, property?.type, property?.property_type, property?.type_label, 'Sin tipo');
-
-const resolveCategory = (property) =>
-  pickString(
-    property?.category_name,
-    property?.category,
-    property?.operation_type,
-    property?.operation,
-    'Sin categoria'
-  );
-
-const resolveStatus = (property) =>
-  pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente');
+import { canManagePropertiesUser, isAdminUser } from '../../../utils/userPermissions';
+import {
+  extractProperties,
+  extractUser,
+  isPublishedProperty,
+  parseNumber,
+  pickString,
+  propertyCategory,
+  propertyId,
+  propertyTimestamp,
+  propertyType,
+} from '../../../utils/dataMappers';
 
 const statusLabel = (rawStatus) => {
-  const lowered = normalizeText(rawStatus);
+  const lowered = pickString(rawStatus).toLowerCase();
   if (!lowered) return 'Pendiente';
   if (lowered.includes('public') || lowered === '1' || lowered === 'active') return 'Publicado';
   if (lowered.includes('pend') || lowered === '0' || lowered === 'inactive') return 'Pendiente';
@@ -118,38 +57,46 @@ export default function PropertiesScreen() {
 
   const sortedProperties = useMemo(() => {
     const cloned = [...properties];
-    cloned.sort((left, right) => resolveDate(right).localeCompare(resolveDate(left)));
+    cloned.sort((left, right) => propertyTimestamp(right).localeCompare(propertyTimestamp(left)));
     return cloned;
   }, [properties]);
 
   const statusOptions = useMemo(() => {
     const options = new Set(['Todos']);
-    sortedProperties.forEach((property) => options.add(statusLabel(resolveStatus(property))));
+    sortedProperties.forEach((property) => {
+      const status = pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente');
+      options.add(statusLabel(status));
+    });
     return [...options];
   }, [sortedProperties]);
 
   const typeOptions = useMemo(() => {
     const options = new Set(['Todos']);
-    sortedProperties.forEach((property) => options.add(resolveType(property)));
+    sortedProperties.forEach((property) => options.add(propertyType(property)));
     return [...options];
   }, [sortedProperties]);
 
   const categoryOptions = useMemo(() => {
     const options = new Set(['Todas']);
-    sortedProperties.forEach((property) => options.add(resolveCategory(property)));
+    sortedProperties.forEach((property) => options.add(propertyCategory(property)));
     return [...options];
   }, [sortedProperties]);
 
   const filteredProperties = useMemo(() => {
-    const search = normalizeText(searchText);
+    const search = pickString(searchText).toLowerCase();
 
     return sortedProperties.filter((property) => {
-      const title = normalizeText(property?.title ?? property?.name ?? property?.reference);
-      const reference = normalizeText(property?.reference);
-      const owner = normalizeText(resolveOwner(property));
-      const status = statusLabel(resolveStatus(property));
-      const type = resolveType(property);
-      const category = resolveCategory(property);
+      const title = pickString(property?.title ?? property?.name ?? property?.reference).toLowerCase();
+      const reference = pickString(property?.reference).toLowerCase();
+      
+      const firstName = pickString(property?.user_first_name, property?.owner_first_name);
+      const lastName = pickString(property?.user_last_name, property?.owner_last_name);
+      const fullName = `${firstName} ${lastName}`.trim();
+      const owner = pickString(fullName, property?.user_name, property?.owner_name, 'Sin propietario').toLowerCase();
+
+      const status = statusLabel(pickString(property?.status, property?.state, property?.publication_status, property?.visibility, 'pendiente'));
+      const type = propertyType(property);
+      const category = propertyCategory(property);
 
       if (search && !title.includes(search) && !reference.includes(search) && !owner.includes(search)) {
         return false;
@@ -237,25 +184,25 @@ export default function PropertiesScreen() {
   };
 
   const openProperty = (item) => {
-    const id = resolveId(item);
+    const id = propertyId(item);
     if (!id) return;
     router.push({ pathname: '/property/[id]', params: { id } });
   };
 
   const handleEdit = (item) => {
-    const id = resolveId(item);
+    const id = propertyId(item);
     if (!id) return;
     router.push({ pathname: '/properties/new', params: { mode: 'edit', id } });
   };
 
   const handleOpenAnnouncement = (item) => {
-    const id = resolveId(item);
+    const id = propertyId(item);
     if (!id) return;
     router.push({ pathname: '/property/preview/[id]', params: { id } });
   };
 
   const handleDelete = (item) => {
-    const id = resolveId(item);
+    const id = propertyId(item);
     if (!id) return;
 
     Alert.alert('Eliminar propiedad', 'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', [
@@ -266,7 +213,7 @@ export default function PropertiesScreen() {
         onPress: async () => {
           try {
             await apiClient.delete(`/agent/properties/${id}`);
-            setProperties((prev) => prev.filter((candidate) => resolveId(candidate) !== id));
+            setProperties((prev) => prev.filter((candidate) => propertyId(candidate) !== id));
           } catch (error) {
             const details = getApiErrorDetails(error);
             Alert.alert('Eliminar', details.message || 'No se pudo eliminar la propiedad.');
@@ -277,7 +224,7 @@ export default function PropertiesScreen() {
   };
 
   const handleToggleStatus = (item) => {
-    const id = resolveId(item);
+    const id = propertyId(item);
     if (!id) return;
 
     const currentStateId = parseNumber(item?.state_id ?? item?.status_id);
@@ -297,7 +244,7 @@ export default function PropertiesScreen() {
               const updated = response?.data?.data || response?.data || {};
               setProperties((prev) =>
                 prev.map((candidate) => {
-                  if (resolveId(candidate) !== id) return candidate;
+                  if (propertyId(candidate) !== id) return candidate;
                   return {
                     ...candidate,
                     ...updated,
@@ -413,7 +360,7 @@ export default function PropertiesScreen() {
             {filteredProperties.length ? (
               filteredProperties.map((item, index) => (
                 <PropertyCardCompact
-                  key={`${resolveId(item) || 'property'}-${index}`}
+                  key={`${propertyId(item) || 'property'}-${index}`}
                   item={item}
                   onPress={() => openProperty(item)}
                   onEdit={() => handleEdit(item)}

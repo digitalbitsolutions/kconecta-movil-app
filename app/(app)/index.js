@@ -11,156 +11,47 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Card as UiCard, colors, radius, sizing, spacing, typography } from '../../components/ui';
 import { useAuthStore } from '../../store/useAuthStore';
 import { getApiErrorDetails, getMeApi, getPropertiesApi } from '../../api/client';
+import { canManagePropertiesUser, isAdminUser } from '../../utils/userPermissions';
+import {
+  parseNumber,
+  formatNumber,
+  formatPrice,
+  pickString,
+  extractUser,
+  extractProperties,
+  userLevelName,
+  propertyId,
+  propertyTitle,
+  propertyType,
+  propertyCategory,
+  propertyAddress,
+  propertyCity,
+  propertyOwner,
+  propertyTimestamp,
+  propertyPrice,
+  isPublishedProperty,
+  sumByKeys,
+} from '../../utils/dataMappers';
 
-const parseNumber = (value) => {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-};
 
-const formatNumber = (value) => new Intl.NumberFormat('es-ES').format(parseNumber(value));
-const formatPrice = (value) => {
-  if (!parseNumber(value)) return 'Sin precio';
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(parseNumber(value));
-};
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-const extractUser = (payload) => {
-  if (payload?.user) return payload.user;
-  if (payload?.data?.user) return payload.data.user;
-  if (payload?.data && typeof payload.data === 'object' && payload.data.id) return payload.data;
-  if (payload?.id) return payload;
-  return null;
-};
-
-const extractProperties = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.data?.data)) return payload.data.data;
-  if (Array.isArray(payload?.properties)) return payload.properties;
-  if (Array.isArray(payload?.result)) return payload.result;
-  if (Array.isArray(payload?.items)) return payload.items;
-  return [];
-};
-
-const userLevelName = (rawUser) => {
-  const roleName = pickString(rawUser?.user_level_name, rawUser?.role, rawUser?.level_name);
-  if (roleName) return roleName;
-
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return 'Administrador';
-  if (levelId === 2) return 'Usuario libre';
-  if (levelId === 3) return 'Usuario premium';
-  if (levelId === 4) return 'Proveedor de servicio';
-  if (levelId === 5) return 'Agente inmobiliario';
-  return 'Usuario';
-};
-
-const isAdminUser = (rawUser) => {
-  if (!rawUser) return false;
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return true;
-  const roleText = pickString(rawUser?.role, rawUser?.user_level_name).toLowerCase();
-  return roleText.includes('admin');
-};
-
-const canManagePropertiesUser = (rawUser) => {
-  if (!rawUser) return false;
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  return levelId === 1 || levelId === 2 || levelId === 3 || levelId === 5;
-};
-
-const propertyId = (property) =>
-  pickString(property?.id, property?.property_id, property?.propertyId, property?.reference);
-
-const propertyTitle = (property) =>
-  pickString(property?.title, property?.name, property?.reference, 'Inmueble sin titulo');
-
-const propertyType = (property) =>
-  pickString(property?.type_name, property?.type, property?.property_type, property?.type_label, 'Sin tipo');
-
-const propertyCategory = (property) =>
-  pickString(
-    property?.category_name,
-    property?.category,
-    property?.operation_type,
-    property?.operation,
-    'Sin categoria'
-  );
-
-const propertyAddress = (property) =>
-  pickString(property?.address, property?.address_line, property?.location, property?.street);
-
-const propertyCity = (property) => pickString(property?.city, property?.province, property?.country);
-
-const propertyOwner = (property) => {
-  const firstName = pickString(property?.user_first_name, property?.owner_first_name);
-  const lastName = pickString(property?.user_last_name, property?.owner_last_name);
-  const fullName = `${firstName} ${lastName}`.trim();
-  return pickString(
-    fullName,
-    property?.user_name,
-    property?.owner_name,
-    property?.agency_name,
-    `Usuario #${parseNumber(property?.user_id) || 0}`
-  );
-};
-
-const propertyTimestamp = (property) =>
-  pickString(property?.updated_at, property?.created_at, property?.date, property?.published_at);
-
-const propertyPrice = (property) =>
-  parseNumber(
-    property?.price ??
-      property?.sale_price ??
-      property?.rental_price ??
-      property?.amount ??
-      property?.cost
-  );
-
-const isPublishedProperty = (property) => {
-  const statusText = pickString(
-    property?.status,
-    property?.state,
-    property?.publication_status,
-    property?.visibility
-  ).toLowerCase();
-
-  if (statusText.includes('public')) return true;
-  if (statusText === '1' || statusText === 'active' || statusText === 'published') return true;
-  if (parseNumber(property?.is_hidden) === 0 && property?.is_hidden !== undefined) return true;
-  if (parseNumber(property?.is_active) === 1 || parseNumber(property?.active) === 1) return true;
-  return false;
-};
-
-const sumByKeys = (items, keys) =>
-  items.reduce((total, item) => {
-    for (let index = 0; index < keys.length; index += 1) {
-      const candidate = parseNumber(item?.[keys[index]]);
-      if (candidate > 0) return total + candidate;
-    }
-    return total;
-  }, 0);
+const DISTRIBUTION_COLORS = [
+  colors.accent,
+  colors.primary,
+  colors.warning,
+  colors.danger,
+  colors.accentStrong,
+  colors.textMuted,
+];
 
 const StatsCard = ({ label, value, accent }) => (
-  <View style={styles.metricCard}>
+  <UiCard style={styles.metricCard}>
     <View style={[styles.metricAccent, { backgroundColor: accent }]} />
     <Text style={styles.metricLabel}>{label}</Text>
     <Text style={styles.metricValue}>{formatNumber(value)}</Text>
-  </View>
+  </UiCard>
 );
 
 const DistributionRow = ({ label, value, max, color }) => {
@@ -375,7 +266,7 @@ export default function DashboardScreen() {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color={colors.accent} />
           <Text style={styles.loadingText}>Cargando dashboard de inmuebles...</Text>
         </View>
       ) : (
@@ -384,30 +275,30 @@ export default function DashboardScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {!propertyAccessEnabled ? (
-            <View style={styles.card}>
+            <UiCard style={styles.card}>
               <Text style={styles.cardTitle}>Modulo inmuebles</Text>
               <Text style={styles.paragraph}>
                 Esta etapa movil esta enfocada en gestion de inmuebles. Tu perfil actual no tiene permisos
                 para este modulo.
               </Text>
-            </View>
+            </UiCard>
           ) : (
             <>
               <View style={styles.metricsGrid}>
-                <StatsCard label="Clicks en alguna propiedad" value={viewsCount} accent="#16A34A" />
-                <StatsCard label="Usuarios que revisaron propiedades" value={uniqueViewersCount} accent="#3B82F6" />
-                <StatsCard label="Clicks en contacto" value={contactClicks} accent="#F97316" />
+                <StatsCard label="Clicks en alguna propiedad" value={viewsCount} accent={colors.success} />
+                <StatsCard label="Usuarios que revisaron propiedades" value={uniqueViewersCount} accent={colors.primary} />
+                <StatsCard label="Clicks en contacto" value={contactClicks} accent={colors.warning} />
               </View>
 
               <View style={styles.insightsGrid}>
-                <View style={styles.card}>
+                <UiCard style={styles.card}>
                   <Text style={styles.cardEyebrow}>Bienvenido</Text>
                   <Text style={styles.cardTitle}>{welcomeName}</Text>
                   <Text style={styles.paragraph}>{welcomeEmail}</Text>
-                </View>
+                </UiCard>
 
                 {adminView ? (
-                  <View style={styles.card}>
+                  <UiCard style={styles.card}>
                     <View style={styles.cardRowBetween}>
                       <Text style={styles.cardTitle}>Usuarios con inmuebles</Text>
                       <Text style={styles.cardHint}>Top activos</Text>
@@ -422,11 +313,11 @@ export default function DashboardScreen() {
                     ) : (
                       <Text style={styles.emptyText}>Sin datos de usuarios para inmuebles.</Text>
                     )}
-                  </View>
+                  </UiCard>
                 ) : null}
               </View>
 
-              <View style={styles.card}>
+              <UiCard style={styles.card}>
                 <View style={styles.cardRowBetween}>
                   <Text style={styles.cardTitle}>Tipo de inmueble visitado</Text>
                   <Text style={styles.cardHint}>Distribucion por inmuebles</Text>
@@ -438,16 +329,16 @@ export default function DashboardScreen() {
                       label={item.label}
                       value={item.count}
                       max={maxTypeCount}
-                      color={['#14B8A6', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'][index % 6]}
+                      color={DISTRIBUTION_COLORS[index % DISTRIBUTION_COLORS.length]}
                     />
                   ))
                 ) : (
                   <Text style={styles.emptyText}>Sin datos de tipos de inmueble.</Text>
                 )}
-              </View>
+              </UiCard>
 
               <View style={styles.twoColumnGrid}>
-                <View style={[styles.card, styles.flexCard]}>
+                <UiCard style={[styles.card, styles.flexCard]}>
                   <Text style={styles.cardTitle}>Ultimos anuncios de propiedades</Text>
                   {recentProperties.length ? (
                     recentProperties.map((item) => (
@@ -475,9 +366,9 @@ export default function DashboardScreen() {
                   ) : (
                     <Text style={styles.emptyText}>No hay anuncios recientes.</Text>
                   )}
-                </View>
+                </UiCard>
 
-                <View style={[styles.card, styles.activityCard]}>
+                <UiCard style={[styles.card, styles.activityCard]}>
                   <Text style={styles.cardTitle}>Actividad</Text>
                   <View style={styles.kpiRow}>
                     <Text style={styles.kpiLabel}>Vistas en detalle</Text>
@@ -495,7 +386,7 @@ export default function DashboardScreen() {
                     <Text style={styles.kpiLabel}>Pendientes</Text>
                     <Text style={styles.kpiValue}>{formatNumber(pendingCount)}</Text>
                   </View>
-                </View>
+                </UiCard>
               </View>
             </>
           )}
@@ -506,104 +397,95 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#EEF3F8' },
+  safeArea: { flex: 1, backgroundColor: colors.backgroundSecondary },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: '#0F172A' },
-  headerSubtitle: { marginTop: 4, color: '#64748B', fontSize: 14, fontWeight: '600' },
+  headerTitle: { ...typography.h1, color: colors.textPrimary },
+  headerSubtitle: { marginTop: spacing.xxs, color: colors.textMuted, ...typography.body },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 10, color: '#64748B', fontSize: 14 },
-  content: { padding: 14, paddingBottom: 24 },
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+  loadingText: { marginTop: spacing.md, color: colors.textMuted, ...typography.body },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
   metricCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    marginRight: 8,
-    marginBottom: 8,
+    padding: spacing.md,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
     minWidth: 210,
     flexGrow: 1,
   },
-  metricAccent: { width: 12, height: 12, borderRadius: 99, marginBottom: 8 },
-  metricLabel: { color: '#64748B', fontSize: 12, fontWeight: '700' },
-  metricValue: { color: '#0F172A', fontSize: 31, fontWeight: '800', marginTop: 6 },
-  insightsGrid: { marginBottom: 12 },
-  twoColumnGrid: { marginBottom: 12 },
+  metricAccent: { width: spacing.md, height: spacing.md, borderRadius: radius.full, marginBottom: spacing.sm },
+  metricLabel: { color: colors.textMuted, ...typography.captionStrong },
+  metricValue: { color: colors.textPrimary, marginTop: spacing.xs, ...typography.h1 },
+  insightsGrid: { marginBottom: spacing.md },
+  twoColumnGrid: { marginBottom: spacing.md },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   flexCard: { flex: 1 },
   activityCard: { flex: 1 },
-  cardEyebrow: { color: '#94A3B8', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  cardTitle: { color: '#0F172A', fontSize: 22, fontWeight: '800', marginBottom: 4 },
-  cardHint: { color: '#94A3B8', fontSize: 12, fontWeight: '700' },
-  paragraph: { color: '#475569', fontSize: 14, lineHeight: 20 },
-  cardRowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  cardEyebrow: { color: colors.textMuted, ...typography.captionStrong, textTransform: 'uppercase' },
+  cardTitle: { color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xxs },
+  cardHint: { color: colors.textMuted, ...typography.captionStrong },
+  paragraph: { color: colors.textSoft, ...typography.body, lineHeight: 20 },
+  cardRowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   simpleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    marginBottom: 6,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  simpleRowLabel: { color: '#1E293B', fontSize: 13, fontWeight: '600', flex: 1, paddingRight: 8 },
-  simpleRowValue: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
-  emptyText: { color: '#64748B', fontSize: 13, lineHeight: 18 },
-  distributionRow: { marginBottom: 10 },
-  distributionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  distributionLabelWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 },
-  legendDot: { width: 9, height: 9, borderRadius: 99, marginRight: 8 },
-  distributionLabel: { color: '#1E293B', fontWeight: '600', fontSize: 13 },
-  distributionValue: { color: '#0F172A', fontWeight: '800', fontSize: 13 },
-  progressTrack: { width: '100%', height: 8, borderRadius: 99, backgroundColor: '#E2E8F0', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 99 },
+  simpleRowLabel: { color: colors.primary, ...typography.label, flex: 1, paddingRight: spacing.sm },
+  simpleRowValue: { color: colors.textPrimary, ...typography.bodyStrong },
+  emptyText: { color: colors.textMuted, ...typography.label, lineHeight: 18 },
+  distributionRow: { marginBottom: spacing.md },
+  distributionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xxs },
+  distributionLabelWrap: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: spacing.sm },
+  legendDot: { width: sizing.dot, height: sizing.dot, borderRadius: radius.full, marginRight: spacing.sm },
+  distributionLabel: { color: colors.primary, ...typography.label },
+  distributionValue: { color: colors.textPrimary, ...typography.label },
+  progressTrack: { width: '100%', height: spacing.sm, borderRadius: radius.full, backgroundColor: colors.surfaceStrong, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: radius.full },
   propertyItem: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 8,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
   },
-  propertyTitle: { color: '#0F172A', fontWeight: '800', fontSize: 14, marginBottom: 2 },
-  propertySubtitle: { color: '#475569', fontWeight: '600', fontSize: 12, marginBottom: 2 },
-  propertyMeta: { color: '#64748B', fontSize: 12, marginBottom: 2 },
-  propertyOwner: { color: '#334155', fontSize: 12, marginBottom: 6 },
+  propertyTitle: { color: colors.textPrimary, ...typography.bodyStrong, marginBottom: spacing.xxs / 2 },
+  propertySubtitle: { color: colors.textSoft, ...typography.caption, marginBottom: spacing.xxs / 2 },
+  propertyMeta: { color: colors.textMuted, ...typography.caption, marginBottom: spacing.xxs / 2 },
+  propertyOwner: { color: colors.primary, ...typography.caption, marginBottom: spacing.xs },
   pricePill: {
-    marginTop: 4,
+    marginTop: spacing.xxs,
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#DBEAFE',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs - 1,
+    backgroundColor: colors.surfaceAccent,
   },
-  pricePillText: { color: '#1D4ED8', fontSize: 12, fontWeight: '800' },
+  pricePillText: { color: colors.accentStrong, ...typography.captionStrong },
   kpiRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingVertical: 9,
+    borderBottomColor: colors.border,
+    paddingVertical: spacing.sm,
   },
-  kpiLabel: { color: '#475569', fontSize: 13, fontWeight: '600' },
-  kpiValue: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
+  kpiLabel: { color: colors.textSoft, ...typography.label },
+  kpiValue: { color: colors.textPrimary, ...typography.bodyStrong },
 });

@@ -181,6 +181,83 @@ const extractAllCandidates = (candidate, bucket = []) => {
   return bucket;
 };
 
+const extractGalleryCandidates = (candidate, bucket = []) => {
+  if (!candidate) return bucket;
+
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (!trimmed) return bucket;
+
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = parseJsonSafe(trimmed);
+      return extractGalleryCandidates(parsed, bucket);
+    }
+
+    bucket.push(trimmed);
+    return bucket;
+  }
+
+  if (Array.isArray(candidate)) {
+    candidate.forEach((entry) => extractGalleryCandidates(entry, bucket));
+    return bucket;
+  }
+
+  if (typeof candidate === 'object') {
+    const direct = pickString(candidate.url, candidate.image_url, candidate.image, candidate.path, candidate.src, candidate.file, candidate.filename, candidate.name);
+    if (direct) bucket.push(direct);
+
+    extractGalleryCandidates(candidate.data, bucket);
+    extractGalleryCandidates(candidate.attributes, bucket);
+    extractGalleryCandidates(candidate.images, bucket);
+    extractGalleryCandidates(candidate.more_images, bucket);
+    extractGalleryCandidates(candidate.gallery, bucket);
+    extractGalleryCandidates(candidate.files, bucket);
+  }
+
+  return bucket;
+};
+
+const extractGalleryEntries = (candidate, bucket = []) => {
+  if (!candidate) return bucket;
+
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (!trimmed) return bucket;
+
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = parseJsonSafe(trimmed);
+      return extractGalleryEntries(parsed, bucket);
+    }
+
+    bucket.push({ id: null, raw: trimmed });
+    return bucket;
+  }
+
+  if (Array.isArray(candidate)) {
+    candidate.forEach((entry) => extractGalleryEntries(entry, bucket));
+    return bucket;
+  }
+
+  if (typeof candidate === 'object') {
+    const direct = pickString(candidate.url, candidate.image_url, candidate.image, candidate.path, candidate.src, candidate.file, candidate.filename, candidate.name);
+    if (direct) {
+      bucket.push({
+        id: candidate.id ?? null,
+        raw: direct,
+      });
+    }
+
+    extractGalleryEntries(candidate.data, bucket);
+    extractGalleryEntries(candidate.attributes, bucket);
+    extractGalleryEntries(candidate.images, bucket);
+    extractGalleryEntries(candidate.more_images, bucket);
+    extractGalleryEntries(candidate.gallery, bucket);
+    extractGalleryEntries(candidate.files, bucket);
+  }
+
+  return bucket;
+};
+
 const unique = (values) => [...new Set((values || []).filter(Boolean))];
 
 export const resolvePropertyImageUrl = (property) => {
@@ -194,11 +271,6 @@ export const resolvePropertyImageUrl = (property) => {
     property.cover_image,
     property.coverImage,
     property.cover,
-    property.images,
-    property.gallery,
-    property.more_images,
-    property.moreImages,
-    property.files,
   ];
 
   for (let index = 0; index < candidates.length; index += 1) {
@@ -224,9 +296,39 @@ export const resolvePropertyGalleryImageUrls = (property) => {
   ];
 
   const collected = [];
-  candidates.forEach((entry) => extractAllCandidates(entry, collected));
+  candidates.forEach((entry) => extractGalleryCandidates(entry, collected));
 
   return unique(collected.map((candidate) => makeAbsoluteMediaUrl(candidate)).filter(Boolean));
+};
+
+export const resolvePropertyGalleryImages = (property) => {
+  if (!property || typeof property !== 'object') return [];
+
+  const candidates = [
+    property.more_images,
+    property.moreImages,
+    property.gallery,
+    property.images,
+    property.files,
+  ];
+
+  const collected = [];
+  candidates.forEach((entry) => extractGalleryEntries(entry, collected));
+
+  const seen = new Set();
+  return collected.reduce((acc, item) => {
+    const url = makeAbsoluteMediaUrl(item?.raw);
+    if (!url) return acc;
+
+    const fingerprint = `${item?.id ?? 'no-id'}::${url}`;
+    if (seen.has(fingerprint)) return acc;
+    seen.add(fingerprint);
+    acc.push({
+      id: item?.id ?? null,
+      url,
+    });
+    return acc;
+  }, []);
 };
 
 export const resolvePropertyVideoUrl = (property) => {

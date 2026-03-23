@@ -1,14 +1,13 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, typography } from '../components/ui';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function RootLayout() {
-  const { token, initialized, initAuth } = useAuthStore();
-  const segments = useSegments();
-  const router = useRouter();
+  const { initialized, initAuth } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -23,8 +22,9 @@ export default function RootLayout() {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <Text>Iniciando KConecta... (Cargando SecureStore)</Text>
+      <View style={styles.bootWrap}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={styles.bootText}>Iniciando KConecta...</Text>
       </View>
     );
   }
@@ -40,3 +40,18 @@ export default function RootLayout() {
   );
 }
 
+const styles = StyleSheet.create({
+  bootWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.xxl,
+  },
+  bootText: {
+    marginTop: spacing.md,
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+});

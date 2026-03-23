@@ -257,6 +257,37 @@ export const getPropertyTypesApi = async () => {
   throw lastError;
 };
 
+export const getPropertyFormCatalogsApi = async (typeId) => {
+  if (!typeId) {
+    throw new Error('Property type id is required');
+  }
+
+  const candidates = [
+    '/agent/property-form-catalogs',
+    '/agent/properties/form-catalogs',
+  ];
+
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.get(endpoint, { params: { type_id: typeId } }));
+      return response.data;
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
 export const createPropertyApi = async (payload) => {
   const response = await withBaseUrlFallback(() => apiClient.post('/agent/properties', payload));
   return response.data;
@@ -281,6 +312,15 @@ export const getPropertyByIdApi = async (id) => {
   }
   const response = await withBaseUrlFallback(() => apiClient.get(`/agent/properties/${id}`));
   return extractObjectPayload(response.data) || response.data;
+};
+
+export const deletePropertyImageApi = async (imageId) => {
+  if (!imageId) {
+    throw new Error('Image id is required');
+  }
+
+  const response = await withBaseUrlFallback(() => apiClient.delete(`/agent/property-images/${imageId}`));
+  return response.data;
 };
 
 export const updatePropertyApi = async (id, payload) => {

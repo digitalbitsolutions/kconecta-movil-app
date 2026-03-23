@@ -1,32 +1,19 @@
 import { resolvePropertyImageUrl } from '../../utils/propertyImageResolver';
+import { colors } from '../ui';
+import {
+  formatPrice,
+  parseNumber,
+  pickString,
+  propertyCategory,
+  propertyId,
+  propertyTitle,
+  propertyType,
+} from '../../utils/dataMappers';
 
 const STATUS_PUBLISHED = 'PUBLICADO';
 const STATUS_DRAFT = 'BORRADOR';
 const STATUS_SOLD = 'VENDIDO';
 
-export const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-export const parseNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-export const formatPrice = (value) => {
-  const amount = parseNumber(value);
-  if (!amount) return 'Sin precio';
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 export const formatArea = (property) => {
   const squareMeters = parseNumber(
@@ -36,14 +23,11 @@ export const formatArea = (property) => {
   return `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(squareMeters)} m2`;
 };
 
-export const resolveTitle = (property) =>
-  pickString(property?.title, property?.name, property?.reference, 'Inmueble sin titulo');
+export const resolveTitle = (property) => propertyTitle(property);
 
-export const resolveType = (property) =>
-  pickString(property?.type_name, property?.type, property?.property_type, property?.type_label, 'Sin tipo');
+export const resolveType = (property) => propertyType(property);
 
-export const resolveOperation = (property) =>
-  pickString(property?.category_name, property?.category, property?.operation_type, property?.operation, 'Sin categoria');
+export const resolveOperation = (property) => propertyCategory(property);
 
 export const resolveOwnerName = (property) => {
   const firstName = pickString(property?.user_first_name, property?.owner_first_name);
@@ -88,21 +72,53 @@ export const isInactiveStatus = (property) => resolveStateId(property) === 5;
 export const getStatusColors = (status) => {
   if (status === STATUS_PUBLISHED) {
     return {
-      backgroundColor: '#059669',
-      textColor: '#ECFDF5',
+      backgroundColor: colors.success,
+      textColor: colors.successSoft,
     };
   }
 
   if (status === STATUS_SOLD) {
     return {
-      backgroundColor: '#DC2626',
-      textColor: '#FEE2E2',
+      backgroundColor: colors.danger,
+      textColor: colors.dangerSoft,
     };
   }
 
   return {
-    backgroundColor: '#475569',
-    textColor: '#E2E8F0',
+    backgroundColor: colors.textSoft,
+    textColor: colors.surfaceStrong,
+  };
+};
+
+export const getActionTheme = (actionKey, { inactive = false } = {}) => {
+  if (actionKey === 'edit') {
+    return {
+      icon: 'ED',
+      backgroundColor: colors.surfaceAccent,
+      textColor: colors.accentStrong,
+    };
+  }
+
+  if (actionKey === 'toggle') {
+    return {
+      icon: inactive ? 'ON' : 'OFF',
+      backgroundColor: colors.warningSoft,
+      textColor: colors.warning,
+    };
+  }
+
+  if (actionKey === 'delete') {
+    return {
+      icon: 'X',
+      backgroundColor: colors.dangerSoft,
+      textColor: colors.danger,
+    };
+  }
+
+  return {
+    icon: 'GO',
+    backgroundColor: colors.surfaceStrong,
+    textColor: colors.textPrimary,
   };
 };
 
@@ -134,7 +150,7 @@ export const resolveMetaLine = (property, { showOwner = false } = {}) => {
   const reference = pickString(property?.reference);
   if (reference) pieces.push(`Ref ${reference}`);
 
-  return pieces.join(' · ');
+  return pieces.join(' - ');
 };
 
 export const resolvePriceValue = (property) =>
@@ -154,8 +170,7 @@ export const resolveLocation = (property) => {
 
 export const resolveDescription = (property) => pickString(property?.description);
 
-export const resolvePropertyId = (property) =>
-  pickString(property?.id, property?.property_id, property?.propertyId, property?.reference);
+export const resolvePropertyId = (property) => propertyId(property);
 
 export const resolvePropertyImage = (property) => resolvePropertyImageUrl(property);
 

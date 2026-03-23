@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   subtitle: {
-    marginTop: 4,
+    marginTop: spacing.xxs,
     ...typography.caption,
     color: colors.textMuted,
   },

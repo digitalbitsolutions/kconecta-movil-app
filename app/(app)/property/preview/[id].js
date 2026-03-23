@@ -1,9 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getApiErrorDetails, getPropertyByIdApi } from '../../../../api/client';
-import { PropertyCardDetailed } from '../../../../components/property';
+import { getApiErrorDetails, getMeApi, getPropertyByIdApi } from '../../../../api/client';
+import {
+  ApartmentDetailView,
+  GarageDetailView,
+  getPropertyDetailVariant,
+  HouseChaletDetailView,
+  LandDetailView,
+  LocalPremisesDetailView,
+  PropertyCardDetailed,
+  RusticHouseDetailView,
+} from '../../../../components/property';
+import { Button as UiButton, Card as UiCard, colors, spacing, typography } from '../../../../components/ui';
+import { useAuthStore } from '../../../../store/useAuthStore';
+import { canEditPropertyUser } from '../../../../utils/userPermissions';
 
 const EXCLUDED_KEYS = new Set([
   'image',
@@ -99,6 +111,15 @@ const extractPropertyObject = (payload) => {
   return payload;
 };
 
+const extractUserObject = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  if (payload.user && typeof payload.user === 'object') return payload.user;
+  if (payload.data?.user && typeof payload.data.user === 'object') return payload.data.user;
+  if (payload.data && typeof payload.data === 'object' && payload.data.id) return payload.data;
+  if (payload.id) return payload;
+  return null;
+};
+
 const buildDetailRows = (property) => {
   if (!property || typeof property !== 'object') return [];
 
@@ -123,6 +144,7 @@ const buildDetailRows = (property) => {
 export default function PropertyPreviewScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user, setUser } = useAuthStore();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState('');
@@ -160,41 +182,111 @@ export default function PropertyPreviewScreen() {
     };
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrentUser = async () => {
+      if (user) return;
+
+      try {
+        const response = await getMeApi();
+        const currentUser = extractUserObject(response);
+        if (!cancelled && currentUser?.id) {
+          setUser(currentUser);
+        }
+      } catch (_error) {
+        // Keep preview usable even if /me fails; edit button will stay hidden.
+      }
+    };
+
+    loadCurrentUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, user]);
+
   const detailRows = useMemo(() => buildDetailRows(property), [property]);
+  const detailVariant = useMemo(() => getPropertyDetailVariant(property), [property]);
+  const activeDetail = detailVariant?.detail;
+  const canEdit = useMemo(() => canEditPropertyUser(user, property), [property, user]);
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>Volver</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => (id ? router.push({ pathname: '/properties/new', params: { mode: 'edit', id } }) : null)}
-            style={styles.editButton}
-          >
-            <Text style={styles.editText}>Editar</Text>
-          </TouchableOpacity>
-        </View>
+  const openExternalUrl = async (url, title) => {
+    if (!url) return;
+    try {
+      await Linking.openURL(url);
+    } catch (_error) {
+      Alert.alert(title, 'No se pudo abrir el enlace solicitado.');
+    }
+  };
 
-        <Text style={styles.title}>Vista previa del anuncio</Text>
-        <Text style={styles.subtitle}>Visualizacion interna en app movil.</Text>
+  const handleShare = async () => {
+    if (!activeDetail?.shareUrl) return;
+    try {
+      await Share.share({
+        title: activeDetail.title,
+        message: activeDetail.shareUrl,
+        url: activeDetail.shareUrl,
+      });
+    } catch (_error) {
+      Alert.alert('Compartir', 'No se pudo compartir el inmueble.');
+    }
+  };
 
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loadingText}>Cargando anuncio...</Text>
-          </View>
-        ) : errorText ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.noticeTitle}>Error</Text>
-            <Text style={styles.errorText}>{errorText}</Text>
-          </View>
-        ) : (
+  const detailViewProps = activeDetail
+    ? {
+        detail: activeDetail,
+        onOpenMap: () => openExternalUrl(activeDetail.mapUrl, 'Mapa'),
+        onOpenPage: () => openExternalUrl(activeDetail.pageUrl, 'Sitio web'),
+        onOpenVideo: () => openExternalUrl(activeDetail.videoUrl, 'Video'),
+        onCall: () => openExternalUrl(activeDetail.contact?.phoneUrl, 'Llamar'),
+        onMessage: () => openExternalUrl(activeDetail.contact?.emailUrl, 'Enviar mensaje'),
+        onShare: handleShare,
+      }
+    : null;
+
+  const renderDetailView = () => {
+    if (!detailViewProps) {
+      return (
+        <>
+          <PropertyCardDetailed item={property} onPress={() => {}} showOwner showActions={false} style={styles.previewCard} />
+
+          <UiCard style={styles.detailsCard}>
+            <Text style={styles.detailsTitle}>Ficha completa</Text>
+            {detailRows.length ? (
+              detailRows.map((row) => (
+                <View key={row.key} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{row.label}</Text>
+                  <Text style={styles.detailValue}>{row.value}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>No hay datos adicionales para mostrar.</Text>
+            )}
+          </UiCard>
+        </>
+      );
+    }
+
+    switch (detailVariant.kind) {
+      case 'houseChalet':
+        return <HouseChaletDetailView {...detailViewProps} />;
+      case 'localPremises':
+        return <LocalPremisesDetailView {...detailViewProps} />;
+      case 'apartment':
+        return <ApartmentDetailView {...detailViewProps} />;
+      case 'rusticHouse':
+        return <RusticHouseDetailView {...detailViewProps} />;
+      case 'garage':
+        return <GarageDetailView {...detailViewProps} />;
+      case 'land':
+        return <LandDetailView {...detailViewProps} />;
+      default:
+        return (
           <>
             <PropertyCardDetailed item={property} onPress={() => {}} showOwner showActions={false} style={styles.previewCard} />
 
-            <View style={styles.detailsCard}>
+            <UiCard style={styles.detailsCard}>
               <Text style={styles.detailsTitle}>Ficha completa</Text>
               {detailRows.length ? (
                 detailRows.map((row) => (
@@ -206,8 +298,42 @@ export default function PropertyPreviewScreen() {
               ) : (
                 <Text style={styles.emptyText}>No hay datos adicionales para mostrar.</Text>
               )}
-            </View>
+            </UiCard>
           </>
+        );
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.headerRow}>
+          <UiButton label="Volver" variant="secondary" onPress={() => router.back()} style={styles.headerAction} />
+          {canEdit ? (
+            <UiButton
+              label="Editar"
+              onPress={() => (id ? router.push({ pathname: '/properties/new', params: { mode: 'edit', id } }) : null)}
+              style={styles.headerAction}
+              disabled={!id}
+            />
+          ) : null}
+        </View>
+
+        <Text style={styles.title}>Vista previa del anuncio</Text>
+        <Text style={styles.subtitle}>Visualizacion interna en app movil.</Text>
+
+        {loading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={styles.loadingText}>Cargando anuncio...</Text>
+          </View>
+        ) : errorText ? (
+          <UiCard style={styles.noticeCard}>
+            <Text style={styles.noticeTitle}>Error</Text>
+            <Text style={styles.errorText}>{errorText}</Text>
+          </UiCard>
+        ) : (
+          renderDetailView()
         )}
       </ScrollView>
     </SafeAreaView>
@@ -217,121 +343,84 @@ export default function PropertyPreviewScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   content: {
-    padding: 14,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  backButton: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backText: {
-    color: '#334155',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  editButton: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1D4ED8',
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  editText: {
-    color: '#1D4ED8',
-    fontSize: 13,
-    fontWeight: '800',
+  headerAction: {
+    flex: 1,
   },
   title: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
+    ...typography.h1,
+    color: colors.textPrimary,
   },
   subtitle: {
-    marginTop: 4,
-    marginBottom: 10,
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '600',
+    marginTop: spacing.xxs,
+    marginBottom: spacing.lg,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   centered: {
-    paddingTop: 36,
+    paddingTop: spacing.xxxl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 10,
-    color: '#64748B',
-    fontSize: 14,
+    marginTop: spacing.sm,
+    ...typography.body,
+    color: colors.textSecondary,
   },
   noticeCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    backgroundColor: '#FEF2F2',
-    padding: 12,
+    borderColor: colors.dangerSoft,
   },
   noticeTitle: {
-    color: '#B91C1C',
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 4,
+    ...typography.h2,
+    color: colors.danger,
+    marginBottom: spacing.xs,
   },
   errorText: {
-    color: '#7F1D1D',
-    fontSize: 13,
-    lineHeight: 18,
+    ...typography.body,
+    color: colors.textSoft,
   },
   previewCard: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   detailsCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D5DFEA',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
+    marginBottom: spacing.lg,
   },
   detailsTitle: {
-    color: '#0F172A',
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   detailRow: {
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: colors.border,
   },
   detailLabel: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 3,
+    ...typography.captionStrong,
+    color: colors.textSoft,
+    marginBottom: spacing.xxs,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   detailValue: {
-    color: '#0F172A',
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.body,
+    color: colors.textPrimary,
     lineHeight: 20,
   },
   emptyText: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.body,
+    color: colors.textSecondary,
   },
 });

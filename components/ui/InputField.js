@@ -11,6 +11,7 @@ export default function InputField({
   multiline = false,
   containerStyle,
   inputStyle,
+  ...rest
 }) {
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -19,11 +20,12 @@ export default function InputField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={colors.textMuted}
         keyboardType={keyboardType}
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
         style={[styles.input, multiline ? styles.inputMultiline : null, inputStyle]}
+        {...rest}
       />
     </View>
   );
@@ -35,18 +37,18 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.label,
-    color: '#334155',
+    color: colors.textSoft,
     marginBottom: spacing.xs,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     color: colors.text,
     ...typography.body,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingVertical: spacing.sm + spacing.xxs,
   },
   inputMultiline: {
     minHeight: 108,

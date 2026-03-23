@@ -1,8 +1,10 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, layout, radius, spacing, typography } from '../ui';
 import {
   formatArea,
   formatPrice,
+  getActionTheme,
   getStatusColors,
   isInactiveStatus,
   resolveLocation,
@@ -66,18 +68,15 @@ export default function PropertyCardCompact({
   const price = formatPrice(resolvePriceValue(item));
   const metaLine = resolveMetaLine(item, { showOwner });
   const inactive = isInactiveStatus(item);
+  const editTheme = getActionTheme('edit');
+  const toggleTheme = getActionTheme('toggle', { inactive });
+  const deleteTheme = getActionTheme('delete');
+  const openTheme = getActionTheme('open');
   const actions = [
-    { key: 'edit', icon: '✏', tint: '#DBEAFE', text: '#1D4ED8', label: 'Editar', handler: onEdit || onPress },
-    {
-      key: 'toggle',
-      icon: inactive ? '👁' : '🙈',
-      tint: '#FEF3C7',
-      text: '#B45309',
-      label: inactive ? 'Habilitar' : 'Deshabilitar',
-      handler: onToggleStatus,
-    },
-    { key: 'delete', icon: '🗑', tint: '#FEE2E2', text: '#B91C1C', label: 'Eliminar', handler: onDelete },
-    { key: 'open', icon: '↗', tint: '#E2E8F0', text: '#0F172A', label: 'Ver anuncio', handler: onOpen },
+    { key: 'edit', label: 'Editar', handler: onEdit || onPress, ...editTheme },
+    { key: 'toggle', label: inactive ? 'Habilitar' : 'Deshabilitar', handler: onToggleStatus, ...toggleTheme },
+    { key: 'delete', label: 'Eliminar', handler: onDelete, ...deleteTheme },
+    { key: 'open', label: 'Ver anuncio', handler: onOpen, ...openTheme },
   ];
 
   return (
@@ -147,8 +146,8 @@ export default function PropertyCardCompact({
               key={action.key}
               icon={action.icon}
               label={action.label}
-              tint={action.tint}
-              textColor={action.text}
+              tint={action.backgroundColor}
+              textColor={action.textColor}
               accessibilityLabel={action.label}
               onPress={(event) => execute(event, action.handler)}
             />
@@ -161,21 +160,21 @@ export default function PropertyCardCompact({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    marginBottom: 12,
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: '#0B172A',
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: spacing.sm },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowRadius: spacing.lg,
     elevation: 4,
   },
   heroWrap: {
     position: 'relative',
     width: '100%',
-    aspectRatio: 16 / 9,
-    backgroundColor: '#E2E8F0',
+    aspectRatio: layout.propertyCardAspectRatio,
+    backgroundColor: colors.surfaceStrong,
   },
   heroImage: {
     width: '100%',
@@ -184,120 +183,109 @@ const styles = StyleSheet.create({
   heroFallback: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.surfaceStrong,
   },
   heroFallbackText: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
+    color: colors.textMuted,
+    ...typography.captionStrong,
     letterSpacing: 0.2,
   },
   heroShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.18)',
+    backgroundColor: colors.overlay,
   },
   statusBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    top: spacing.sm,
+    right: spacing.sm,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs - 1,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: '800',
+    ...typography.captionStrong,
     letterSpacing: 0.5,
   },
   tagsRow: {
     position: 'absolute',
-    left: 8,
-    bottom: 8,
+    left: spacing.sm,
+    bottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
   },
   tagPill: {
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xxs,
   },
   tagText: {
-    color: '#0F172A',
-    fontSize: 10,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    ...typography.captionStrong,
   },
   body: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm + spacing.xxs,
   },
   title: {
-    color: '#0F172A',
-    fontSize: 17,
-    fontWeight: '800',
+    color: colors.textPrimary,
+    ...typography.h2,
     lineHeight: 22,
   },
   locationMain: {
-    marginTop: 6,
-    color: '#334155',
-    fontSize: 13,
-    fontWeight: '600',
+    marginTop: spacing.xs,
+    color: colors.primary,
+    ...typography.captionStrong,
   },
   locationSub: {
-    marginTop: 2,
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '500',
+    marginTop: spacing.xxs / 2,
+    color: colors.textMuted,
+    ...typography.caption,
   },
   mainInfoRow: {
-    marginTop: 10,
+    marginTop: spacing.sm + spacing.xxs,
     flexDirection: 'row',
     alignItems: 'center',
   },
   areaText: {
-    color: '#475569',
-    fontSize: 13,
-    fontWeight: '700',
-    marginRight: 14,
+    color: colors.textSoft,
+    ...typography.label,
+    marginRight: spacing.lg - spacing.xxs,
   },
   priceText: {
-    color: '#0F172A',
-    fontSize: 20,
-    fontWeight: '900',
+    color: colors.textPrimary,
+    ...typography.h2,
   },
   metaLine: {
-    marginTop: 8,
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
+    marginTop: spacing.sm,
+    color: colors.textMuted,
+    ...typography.caption,
   },
   actionsRow: {
-    marginTop: 10,
+    marginTop: spacing.sm + spacing.xxs,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: spacing.xs,
   },
   actionButton: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: spacing.xxl * 2 + spacing.xxs,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xxs,
   },
   actionIcon: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...typography.label,
   },
   actionLabel: {
-    marginTop: 2,
-    fontSize: 10,
-    fontWeight: '700',
+    marginTop: spacing.xxs / 2,
+    ...typography.caption,
   },
 });

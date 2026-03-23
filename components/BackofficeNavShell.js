@@ -2,26 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { useAuthStore } from '../store/useAuthStore';
-
-const parseNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-  }
-  return '';
-};
-
-const isAdminUser = (rawUser) => {
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return true;
-  const roleText = pickString(rawUser?.role, rawUser?.user_level_name).toLowerCase();
-  return roleText.includes('admin');
-};
+import { canAccessUsers, isAdminUser } from '../utils/userPermissions';
 
 const isActivePath = (pathname, href) => {
   if (href === '/') {
@@ -50,9 +31,12 @@ export default function BackofficeNavShell({ children }) {
   const navItems = [
     { label: 'Dashboard', href: '/' },
     { label: adminView ? 'Propiedades' : 'Mis propiedades', href: '/properties' },
-    { label: 'Usuarios', href: '/users' },
     { label: 'Mi perfil', href: '/profile' },
   ];
+
+  if (canAccessUsers(user)) {
+    navItems.splice(2, 0, { label: 'Usuarios', href: '/users' });
+  }
 
   if (isDesktop) {
     return (

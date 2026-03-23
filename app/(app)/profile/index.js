@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getApiErrorDetails, getMeApi } from '../../../api/client';
+import { Button as UiButton, Card as UiCard, colors, radius, spacing, typography } from '../../../components/ui';
 import { useAuthStore } from '../../../store/useAuthStore';
 
 const parseNumber = (value) => {
@@ -111,11 +112,11 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.title}>Mi perfil</Text>
-        <Text style={styles.subtitle}>Datos del usuario autenticado en CRM.</Text>
+        <Text style={styles.subtitle}>Datos del usuario autenticado en el CRM.</Text>
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.note}>Cargando perfil...</Text>
           </View>
         ) : (
@@ -127,7 +128,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
-            <View style={styles.card}>
+            <UiCard style={styles.card}>
               <ProfileField label="ID" value={profile.id} />
               <ProfileField label="Nombre" value={profile.name} />
               <ProfileField label="Email" value={profile.email} />
@@ -135,11 +136,9 @@ export default function ProfileScreen() {
               <ProfileField label="Rol" value={profile.role} />
               <ProfileField label="Nivel" value={profile.level} />
               <ProfileField label="Empresa" value={profile.company} />
-            </View>
+            </UiCard>
 
-            <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>Cerrar sesion</Text>
-            </TouchableOpacity>
+            <UiButton label="Cerrar sesion" onPress={logout} variant="danger" />
           </>
         )}
       </ScrollView>
@@ -150,87 +149,65 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   content: {
-    padding: 14,
-    paddingBottom: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   title: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
+    color: colors.textPrimary,
+    ...typography.h1,
   },
   subtitle: {
-    marginTop: 4,
-    marginBottom: 12,
-    color: '#475569',
-    fontSize: 14,
-    fontWeight: '600',
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    color: colors.textSoft,
+    ...typography.body,
   },
   centered: {
-    paddingTop: 24,
+    paddingTop: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   note: {
-    marginTop: 8,
-    color: '#64748B',
-    fontSize: 14,
+    marginTop: spacing.sm,
+    color: colors.textMuted,
+    ...typography.body,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
+    paddingVertical: spacing.sm,
   },
   fieldRow: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingVertical: 10,
+    borderBottomColor: colors.border,
+    paddingVertical: spacing.md,
   },
   fieldLabel: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
+    color: colors.textMuted,
+    ...typography.captionStrong,
   },
   fieldValue: {
-    marginTop: 2,
-    color: '#0F172A',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  logoutBtn: {
-    backgroundColor: '#E11D48',
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
+    marginTop: spacing.xs / 2,
+    color: colors.textPrimary,
+    ...typography.h3,
   },
   errorCard: {
-    backgroundColor: '#FFF1F2',
+    backgroundColor: colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#FBCFE8',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+    borderColor: colors.danger,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   errorTitle: {
-    color: '#9F1239',
-    fontSize: 16,
-    fontWeight: '800',
+    color: colors.danger,
+    ...typography.h3,
   },
   errorText: {
-    marginTop: 4,
-    color: '#BE123C',
-    fontSize: 13,
+    marginTop: spacing.xs,
+    color: colors.danger,
+    ...typography.caption,
     lineHeight: 18,
   },
 });

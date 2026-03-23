@@ -1,13 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiClient, getApiErrorDetails } from '../../../api/client';
-import { PropertyCardDetailed } from '../../../components/property';
+import { getApiErrorDetails, getMeApi, getPropertyByIdApi } from '../../../api/client';
+import {
+  ApartmentDetailView,
+  GarageDetailView,
+  getPropertyDetailVariant,
+  HouseChaletDetailView,
+  LandDetailView,
+  LocalPremisesDetailView,
+  PropertyCardDetailed,
+  RusticHouseDetailView,
+} from '../../../components/property';
+import { Button as UiButton, Card as UiCard, colors, spacing, typography } from '../../../components/ui';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { canEditPropertyUser } from '../../../utils/userPermissions';
+
+const extractPropertyObject = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  if (payload.property && typeof payload.property === 'object') return extractPropertyObject(payload.property);
+  if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+    return extractPropertyObject(payload.data);
+  }
+  return payload;
+};
+
+const extractUserObject = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  if (payload.user && typeof payload.user === 'object') return payload.user;
+  if (payload.data?.user && typeof payload.data.user === 'object') return payload.data.user;
+  if (payload.data && typeof payload.data === 'object' && payload.data.id) return payload.data;
+  if (payload.id) return payload;
+  return null;
+};
 
 export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user, setUser } = useAuthStore();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState('');
@@ -23,8 +54,12 @@ export default function PropertyDetailScreen() {
       setLoading(true);
       setErrorText('');
       try {
-        const response = await apiClient.get(`/agent/properties/${id}`);
-        setProperty(response?.data || null);
+        const response = await getPropertyByIdApi(id);
+        const propertyObject = extractPropertyObject(response);
+        if (!propertyObject) {
+          throw new Error('No se recibieron datos del inmueble.');
+        }
+        setProperty(propertyObject);
       } catch (error) {
         const details = getApiErrorDetails(error);
         setErrorText(details.message || 'No se pudo cargar la propiedad.');
@@ -36,98 +71,117 @@ export default function PropertyDetailScreen() {
     load();
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrentUser = async () => {
+      if (user) return;
+
+      try {
+        const response = await getMeApi();
+        const currentUser = extractUserObject(response);
+        if (!cancelled && currentUser?.id) {
+          setUser(currentUser);
+        }
+      } catch (_error) {
+        // Keep detail usable even if /me fails; edit button will stay hidden.
+      }
+    };
+
+    loadCurrentUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, user]);
+
   const handleEdit = () => {
     if (!id) return;
     router.push({ pathname: '/properties/new', params: { mode: 'edit', id } });
   };
 
-  const handleDelete = () => {
-    if (!id) return;
-    Alert.alert('Eliminar propiedad', 'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiClient.delete(`/agent/properties/${id}`);
-            router.replace('/properties');
-          } catch (error) {
-            const details = getApiErrorDetails(error);
-            Alert.alert('Eliminar', details.message || 'No se pudo eliminar la propiedad.');
-          }
-        },
-      },
-    ]);
+  const canEdit = useMemo(() => canEditPropertyUser(user, property), [property, user]);
+
+  const detailVariant = useMemo(() => getPropertyDetailVariant(property), [property]);
+  const activeDetail = detailVariant?.detail;
+
+  const openExternalUrl = async (url, title) => {
+    if (!url) return;
+    try {
+      await Linking.openURL(url);
+    } catch (_error) {
+      Alert.alert(title, 'No se pudo abrir el enlace solicitado.');
+    }
   };
 
-  const handleToggleStatus = () => {
-    if (!id || !property) return;
-    const currentState = Number(property?.state_id ?? 4);
-    const nextState = currentState === 5 ? 4 : 5;
-    const label = nextState === 5 ? 'deshabilitar' : 'habilitar';
-
-    Alert.alert(
-      'Cambiar estado',
-      `Vas a ${label} esta propiedad. Puede afectar su visibilidad en listados. Quieres continuar?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            try {
-              const response = await apiClient.patch(`/agent/properties/${id}`, { state_id: nextState });
-              const updated = response?.data?.data || response?.data || {};
-              setProperty((prev) => ({
-                ...(prev || {}),
-                ...updated,
-                state_id: Number(updated?.state_id ?? nextState),
-                state: updated?.state ?? (nextState === 5 ? 'inactive' : 'active'),
-                status: updated?.status ?? (nextState === 5 ? 'inactivo' : 'publicado'),
-              }));
-            } catch (error) {
-              const details = getApiErrorDetails(error);
-              Alert.alert('Estado', details.message || 'No se pudo actualizar el estado.');
-            }
-          },
-        },
-      ]
-    );
+  const handleShare = async () => {
+    if (!activeDetail?.shareUrl) return;
+    try {
+      await Share.share({
+        title: activeDetail.title,
+        message: activeDetail.shareUrl,
+        url: activeDetail.shareUrl,
+      });
+    } catch (_error) {
+      Alert.alert('Compartir', 'No se pudo compartir el inmueble.');
+    }
   };
 
-  const handleOpenAnnouncement = () => {
-    if (!id) return;
-    router.push({ pathname: '/property/preview/[id]', params: { id } });
+  const detailViewProps = activeDetail
+    ? {
+        detail: activeDetail,
+        onOpenMap: () => openExternalUrl(activeDetail.mapUrl, 'Mapa'),
+        onOpenPage: () => openExternalUrl(activeDetail.pageUrl, 'Sitio web'),
+        onOpenVideo: () => openExternalUrl(activeDetail.videoUrl, 'Video'),
+        onCall: () => openExternalUrl(activeDetail.contact?.phoneUrl, 'Llamar'),
+        onMessage: () => openExternalUrl(activeDetail.contact?.emailUrl, 'Enviar mensaje'),
+        onShare: handleShare,
+      }
+    : null;
+
+  const renderDetailView = () => {
+    if (!detailViewProps) {
+      return <PropertyCardDetailed item={property} onPress={() => {}} showOwner showActions={false} />;
+    }
+
+    switch (detailVariant.kind) {
+      case 'houseChalet':
+        return <HouseChaletDetailView {...detailViewProps} />;
+      case 'localPremises':
+        return <LocalPremisesDetailView {...detailViewProps} />;
+      case 'apartment':
+        return <ApartmentDetailView {...detailViewProps} />;
+      case 'rusticHouse':
+        return <RusticHouseDetailView {...detailViewProps} />;
+      case 'garage':
+        return <GarageDetailView {...detailViewProps} />;
+      case 'land':
+        return <LandDetailView {...detailViewProps} />;
+      default:
+        return <PropertyCardDetailed item={property} onPress={() => {}} showOwner showActions={false} />;
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>Volver</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsRow}>
+          <UiButton label="Volver" variant="secondary" onPress={() => router.back()} style={styles.actionButton} />
+          {canEdit ? <UiButton label="Editar" onPress={handleEdit} style={styles.actionButton} disabled={!id} /> : null}
+        </View>
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.loadingText}>Cargando propiedad...</Text>
           </View>
         ) : errorText ? (
-          <View style={styles.card}>
+          <UiCard style={styles.errorCard}>
             <Text style={styles.errorTitle}>Error</Text>
             <Text style={styles.errorText}>{errorText}</Text>
-          </View>
+          </UiCard>
         ) : (
-          <PropertyCardDetailed
-            item={property}
-            onPress={() => {}}
-            onEdit={handleEdit}
-            onToggleStatus={handleToggleStatus}
-            onDelete={handleDelete}
-            onOpen={handleOpenAnnouncement}
-            showOwner
-            showActions
-          />
+          renderDetailView()
         )}
       </ScrollView>
     </SafeAreaView>
@@ -137,50 +191,42 @@ export default function PropertyDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   content: {
-    padding: 14,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
   },
-  backButton: {
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  backText: {
-    color: '#1D4ED8',
-    fontWeight: '700',
+  actionButton: {
+    flex: 1,
   },
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 40,
+    paddingTop: spacing.xxxl,
   },
   loadingText: {
-    marginTop: 10,
-    color: '#64748B',
+    marginTop: spacing.sm,
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  card: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
+  errorCard: {
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.card,
   },
   errorTitle: {
-    color: '#B91C1C',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 8,
+    ...typography.h2,
+    color: colors.danger,
+    marginBottom: spacing.sm,
   },
   errorText: {
-    color: '#7F1D1D',
-    fontSize: 14,
+    ...typography.body,
+    color: colors.textSoft,
   },
 });

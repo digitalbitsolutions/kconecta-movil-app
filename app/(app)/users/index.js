@@ -1,45 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getApiErrorDetails, getMeApi, getPropertiesApi } from '../../../api/client';
+import { Card as UiCard, colors, radius, spacing, typography } from '../../../components/ui';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { canAccessUsers } from '../../../utils/userPermissions';
+import {
+  extractProperties,
+  extractUser,
+  parseNumber,
+  pickString,
+} from '../../../utils/dataMappers';
 
-const parseNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const pickString = (...values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index];
-    if (typeof current === 'string' && current.trim()) return current.trim();
-    if (typeof current === 'number' && Number.isFinite(current)) return String(current);
-  }
-  return '';
-};
-
-const extractUser = (payload) => {
-  if (payload?.user) return payload.user;
-  if (payload?.data?.user) return payload.data.user;
-  if (payload?.data?.id) return payload.data;
-  if (payload?.id) return payload;
-  return null;
-};
-
-const extractProperties = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.data?.data)) return payload.data.data;
-  if (Array.isArray(payload?.properties)) return payload.properties;
-  if (Array.isArray(payload?.result)) return payload.result;
-  return [];
-};
-
-const isAdminUser = (rawUser) => {
-  const levelId = parseNumber(rawUser?.user_level_id ?? rawUser?.level_id ?? rawUser?.role_id);
-  if (levelId === 1) return true;
-  const roleText = pickString(rawUser?.role, rawUser?.user_level_name).toLowerCase();
-  return roleText.includes('admin');
-};
 
 const buildUserRows = (properties) => {
   const map = new Map();
@@ -101,7 +72,7 @@ export default function UsersScreen() {
       setErrorText(`/me -> ${details.message}`);
     }
 
-    const isAdmin = isAdminUser(effectiveUser);
+    const isAdmin = canAccessUsers(effectiveUser);
     setAdminView(isAdmin);
     if (!isAdmin) {
       setRows([]);
@@ -152,19 +123,19 @@ export default function UsersScreen() {
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2563EB" />
+            <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.note}>Cargando usuarios...</Text>
           </View>
         ) : !adminView ? (
-          <View style={styles.card}>
+          <UiCard style={styles.card}>
             <Text style={styles.cardTitle}>Solo administradores</Text>
             <Text style={styles.note}>
               Esta vista requiere perfil administrador para listar usuarios del CRM.
             </Text>
-          </View>
+          </UiCard>
         ) : (
           <>
-            <View style={styles.summaryCard}>
+            <UiCard style={styles.summaryCard}>
               <View style={styles.kpiItem}>
                 <Text style={styles.kpiValue}>{rows.length}</Text>
                 <Text style={styles.kpiLabel}>Usuarios con inmuebles</Text>
@@ -173,30 +144,30 @@ export default function UsersScreen() {
                 <Text style={styles.kpiValue}>{totalProperties}</Text>
                 <Text style={styles.kpiLabel}>Total de inmuebles</Text>
               </View>
-            </View>
+            </UiCard>
 
             {errorText ? (
-              <View style={styles.card}>
+              <UiCard style={styles.card}>
                 <Text style={styles.cardTitle}>Error parcial</Text>
                 <Text style={styles.errorText}>{errorText}</Text>
-              </View>
+              </UiCard>
             ) : null}
 
             {rows.length ? (
               rows.map((row) => (
-                <View key={`user-${row.userId}`} style={styles.rowCard}>
+                <UiCard key={`user-${row.userId}`} style={styles.rowCard}>
                   <View>
                     <Text style={styles.rowName}>{row.displayName}</Text>
                     <Text style={styles.rowMeta}>ID: {row.userId}</Text>
                   </View>
                   <Text style={styles.rowCount}>{row.propertiesCount}</Text>
-                </View>
+                </UiCard>
               ))
             ) : (
-              <View style={styles.card}>
+              <UiCard style={styles.card}>
                 <Text style={styles.cardTitle}>Sin datos</Text>
                 <Text style={styles.note}>No hay usuarios con inmuebles para mostrar.</Text>
-              </View>
+              </UiCard>
             )}
           </>
         )}
@@ -208,102 +179,81 @@ export default function UsersScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   content: {
-    padding: 14,
-    paddingBottom: 24,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   title: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
+    color: colors.textPrimary,
+    ...typography.h1,
   },
   subtitle: {
-    marginTop: 4,
-    marginBottom: 12,
-    color: '#475569',
-    fontSize: 14,
-    fontWeight: '600',
+    marginTop: spacing.xxs,
+    marginBottom: spacing.md,
+    color: colors.textSoft,
+    ...typography.body,
   },
   centered: {
-    paddingTop: 24,
+    paddingTop: spacing.xxl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   note: {
-    marginTop: 8,
-    color: '#64748B',
-    fontSize: 14,
+    marginTop: spacing.sm,
+    color: colors.textMuted,
+    ...typography.body,
     lineHeight: 19,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   cardTitle: {
-    color: '#0F172A',
-    fontWeight: '800',
-    fontSize: 18,
-    marginBottom: 4,
+    color: colors.textPrimary,
+    ...typography.h2,
+    marginBottom: spacing.xxs,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    marginBottom: spacing.md,
     flexDirection: 'row',
   },
   kpiItem: {
     flex: 1,
   },
   kpiValue: {
-    color: '#0F172A',
-    fontWeight: '800',
-    fontSize: 31,
+    color: colors.textPrimary,
+    ...typography.h1,
   },
   kpiLabel: {
-    marginTop: 2,
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
+    marginTop: spacing.xxs / 2,
+    color: colors.textMuted,
+    ...typography.captionStrong,
   },
   rowCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    marginBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   rowName: {
-    color: '#0F172A',
-    fontSize: 15,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    ...typography.bodyStrong,
   },
   rowMeta: {
-    color: '#64748B',
-    fontSize: 12,
-    marginTop: 1,
+    color: colors.textMuted,
+    ...typography.caption,
+    marginTop: spacing.xxs / 4,
   },
   rowCount: {
-    color: '#1D4ED8',
-    fontSize: 24,
-    fontWeight: '800',
+    color: colors.primary,
+    ...typography.h1,
   },
   errorText: {
-    color: '#B91C1C',
-    fontSize: 13,
+    color: colors.danger,
+    ...typography.label,
     lineHeight: 18,
   },
 });

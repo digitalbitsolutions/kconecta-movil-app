@@ -1,6 +1,8 @@
 import { Redirect, Slot } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import { colors } from '../../components/ui';
 import { useAuthStore } from '../../store/useAuthStore';
 import BackofficeNavShell from '../../components/BackofficeNavShell';
 
@@ -10,7 +12,7 @@ export default function AppLayout() {
   if (!initialized) {
     return (
       <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -24,6 +26,7 @@ export default function AppLayout() {
       <BackofficeNavShell>
         <Slot />
       </BackofficeNavShell>
+      <Toast />
     </SafeAreaView>
   );
 }
@@ -31,12 +34,12 @@ export default function AppLayout() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
   loaderWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.backgroundSecondary,
   },
 });
