@@ -1,3 +1,4 @@
+// Agent: Codex
 import { StyleSheet } from 'react-native';
 
 export const colors = {
@@ -5,6 +6,9 @@ export const colors = {
   backgroundSecondary: '#EEF3F8',
   card: '#FFFFFF',
   surfaceMuted: '#F8FAFC',
+  brandDark: '#0D0D0D',
+  brandAccent: '#2BB5A8',
+  brandBorder: '#262626',
   surfaceAccent: '#E8FBF8',
   surfaceStrong: '#E2E8F0',
   primary: '#0F2A44',

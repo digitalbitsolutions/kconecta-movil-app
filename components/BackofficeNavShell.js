@@ -1,3 +1,4 @@
+// Agent: Codex
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
