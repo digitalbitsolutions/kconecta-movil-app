@@ -10,6 +10,16 @@ import {
   propertyType,
 } from '../../utils/dataMappers';
 
+export {
+  formatPrice,
+  parseNumber,
+  pickString,
+  propertyCategory,
+  propertyId,
+  propertyTitle,
+  propertyType,
+};
+
 const STATUS_PUBLISHED = 'PUBLICADO';
 const STATUS_DRAFT = 'BORRADOR';
 const STATUS_SOLD = 'VENDIDO';

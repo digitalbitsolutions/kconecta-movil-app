@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { uiAlert } from '../../../utils/uiAlert';
 import { apiClient, getApiErrorDetails, getMeApi, getPropertiesApi } from '../../../api/client';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { PropertyCardCompact } from '../../../components/property';
@@ -142,25 +143,30 @@ export default function PropertiesScreen() {
   };
 
   const handleDelete = (item) => {
+    console.log('[Properties] Requesting delete for item:', item.id);
     const id = propertyId(item);
     if (!id) return;
 
-    Alert.alert('Eliminar propiedad', 'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiClient.delete(`/agent/properties/${id}`);
-            setProperties((prev) => prev.filter((candidate) => propertyId(candidate) !== id));
-          } catch (error) {
-            const details = getApiErrorDetails(error);
-            Alert.alert('Eliminar', details.message || 'No se pudo eliminar la propiedad.');
-          }
+    uiAlert(
+      'Eliminar propiedad', 
+      'Esta accion es definitiva. Seguro que quieres eliminar esta propiedad?', 
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/agent/properties/${id}`);
+              setProperties((prev) => prev.filter((candidate) => propertyId(candidate) !== id));
+            } catch (error) {
+              const details = getApiErrorDetails(error);
+              uiAlert('Eliminar', details.message || 'No se pudo eliminar la propiedad.', [{ text: 'OK' }]);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleToggleStatus = (item) => {

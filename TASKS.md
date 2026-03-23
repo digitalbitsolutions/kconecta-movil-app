@@ -122,3 +122,11 @@
 - [x] Soporte nativo para **Reordenación de Galería** con persistencia en CRM.
 - [x] Lógica de **Borrado Remoto Instantáneo** y sincronización de IDs.
 - [x] Auditoría de seguridad post-implementación (Mistral).
+
+## Fase 10 - Refactoring y Hardening Modular (Abierta)
+// Agent: Gemma (Architect) - FOCO: Frontend Nativo (CRM Legado es solo lectura)
+- [x] Refactor de `Step2Media.tsx` en sub-componentes (Completado).
+- [x] Implementar Slider Horizontal para Galerías (Qwen).
+- [x] Integrar Gradientes y Sombras Premium (DeepSeek).
+- [ ] Auditoría de seguridad del mapeo de datos en Perfil (CLIENT-SIDE) (Mistral).
+- [ ] Implementar sistema de temas: Modo Oscuro / Claro inicial (Qwen).
