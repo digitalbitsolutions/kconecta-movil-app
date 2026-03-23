@@ -188,10 +188,30 @@ const buildAddressMetaItems = (property) =>
     { key: 'door', label: 'Puerta', value: pickString(property?.door) },
   ].filter((item) => item.value);
 
+// Agent: DeepSeek
 const buildPhoneUrl = (property) => {
-  const phone = pickString(property?.user?.landline_phone, property?.landline_phone);
+  const phone = pickString(
+    property?.user?.mobile_phone,
+    property?.user?.landline_phone,
+    property?.mobile_phone,
+    property?.landline_phone
+  );
   if (!phone) return '';
   return `tel:${phone}`;
+};
+
+const buildWhatsAppUrl = (property, title) => {
+  const phone = pickString(
+    property?.user?.mobile_phone,
+    property?.user?.landline_phone,
+    property?.mobile_phone,
+    property?.landline_phone
+  );
+  if (!phone) return '';
+  
+  const cleanPhone = phone.replace(/\D/g, '');
+  const message = encodeURIComponent(`Hola, me interesa el inmueble: ${title}`);
+  return `https://wa.me/${cleanPhone}?text=${message}`;
 };
 
 const buildLocationLine = (property) => {
@@ -257,6 +277,7 @@ const buildSharedDetail = (property) => {
       publishedBy,
       updatedAt,
       phoneUrl: buildPhoneUrl(property),
+      whatsappUrl: buildWhatsAppUrl(property, title),
       emailUrl: buildMailToUrl(property, title, shareUrl),
       avatarUrl: pickString(property?.user?.photo_url, property?.user?.photo),
       hasShare: Boolean(shareUrl),

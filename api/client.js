@@ -342,6 +342,15 @@ export const updatePropertyApi = async (id, payload) => {
   return response.data;
 };
 
+// Agent: DeepSeek
+export const getLeadsApi = async (options = {}) => {
+  const { perPage = 20 } = options;
+  const response = await withBaseUrlFallback(() => 
+    apiClient.get('/agent/leads', { params: { per_page: perPage } })
+  );
+  return response.data;
+};
+
 export const processAgentTask = async (taskType, input) => {
   try {
     const response = await withBaseUrlFallback(() =>
