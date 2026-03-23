@@ -1,3 +1,4 @@
+// Agent: DeepSeek
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -54,12 +55,21 @@ export const Step2Media: React.FC = () => {
     setGalleryImages(galleryImages.filter(img => img.uri !== uri));
   };
 
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    const newImages = [...galleryImages];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+    
+    [newImages[index], newImages[targetIndex]] = [newImages[targetIndex], newImages[index]];
+    setGalleryImages(newImages);
+  };
+
   return (
     <UiCard style={{}}>
       <SectionHeader title="Media" subtitle="Imagenes y videos del inmueble" />
 
       {/* Cover Image */}
-      <Text style={styles.label}>Imagen de portada</Text>
+      <Text style={styles.label}>Imagen de portada (Lider)</Text>
       <TouchableOpacity 
         style={styles.mediaPlaceholder} 
         onPress={() => pickImage('cover')}
@@ -67,30 +77,46 @@ export const Step2Media: React.FC = () => {
         {coverImage ? (
           <Image source={{ uri: coverImage.uri }} style={styles.fullImage} />
         ) : (
-          <Text style={styles.placeholderText}>+ Seleccionar portada</Text>
+          <Text style={styles.placeholderText}>+ Definir imagen principal</Text>
         )}
       </TouchableOpacity>
 
       {/* Gallery */}
-      <Text style={[styles.label, { marginTop: uiSpacing.md }]}>Galeria de imagenes</Text>
+      <View style={styles.galleryHeader}>
+        <Text style={styles.label}>Galeria de imagenes</Text>
+        <Text style={styles.countBadge}>{galleryImages.length} fotos</Text>
+      </View>
+      
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-        {galleryImages.map((img, idx) => (
-          <View key={`${img.uri}-${idx}`} style={styles.galleryItem}>
-            <Image source={{ uri: img.uri }} style={styles.galleryImage} />
-            <TouchableOpacity 
-              style={styles.removeBadge} 
-              onPress={() => removeGalleryImage(img.uri)}
-            >
-              <Text style={styles.removeBadgeText}>X</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
         <TouchableOpacity 
           style={styles.galleryAdd} 
           onPress={() => pickImage('gallery')}
         >
-          <Text style={styles.placeholderText}>+</Text>
+          <Text style={styles.addIcon}>+</Text>
+          <Text style={styles.addText}>Añadir</Text>
         </TouchableOpacity>
+
+        {galleryImages.map((img, idx) => (
+          <View key={`${img.uri}-${idx}`} style={styles.galleryItem}>
+            <Image source={{ uri: img.uri }} style={styles.galleryImage} />
+            
+            <View style={styles.itemActions}>
+              {idx > 0 && (
+                <TouchableOpacity style={styles.actionBtn} onPress={() => moveImage(idx, 'left')}>
+                  <Text style={styles.actionIcon}>←</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.actionBtn} onPress={() => removeGalleryImage(img.uri)}>
+                <Text style={styles.actionIcon}>❌</Text>
+              </TouchableOpacity>
+              {idx < galleryImages.length - 1 && (
+                <TouchableOpacity style={styles.actionBtn} onPress={() => moveImage(idx, 'right')}>
+                  <Text style={styles.actionIcon}>→</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
 
       {/* Video */}
@@ -186,5 +212,46 @@ const styles = StyleSheet.create({
   videoText: {
     ...(uiTypography.caption as any),
     textAlign: 'center',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: uiSpacing.md,
+    marginBottom: uiSpacing.xs,
+  },
+  countBadge: {
+    ...(uiTypography.captionStrong as any),
+    color: uiColors.accentStrong,
+    backgroundColor: uiColors.surfaceAccent,
+    paddingHorizontal: uiSpacing.sm,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  addIcon: {
+    fontSize: 24,
+    color: uiColors.textMuted,
+  },
+  addText: {
+    ...(uiTypography.caption as any),
+    color: uiColors.textMuted,
+    fontSize: 10,
+  },
+  itemActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  actionBtn: {
+    paddingHorizontal: 6,
+  },
+  actionIcon: {
+    color: 'white',
+    fontSize: 12,
   },
 });
