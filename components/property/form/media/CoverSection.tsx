@@ -11,7 +11,7 @@ interface CoverSectionProps {
 export const CoverSection: React.FC<CoverSectionProps> = ({ image, onPick }) => {
   return (
     <View>
-      <Text style={styles.label}>Imagen de portada (Lider)</Text>
+      <Text style={styles.label}>Imagen principal</Text>
       <TouchableOpacity 
         style={styles.mediaPlaceholder} 
         onPress={onPick}

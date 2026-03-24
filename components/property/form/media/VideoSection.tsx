@@ -12,7 +12,7 @@ interface VideoSectionProps {
 export const VideoSection: React.FC<VideoSectionProps> = ({ video, onPick, onRemove }) => {
   return (
     <View>
-      <Text style={styles.label}>Video (MP4 recomendado)</Text>
+      <Text style={styles.label}>Video</Text>
       <TouchableOpacity 
         style={styles.mediaPlaceholder} 
         onPress={onPick}

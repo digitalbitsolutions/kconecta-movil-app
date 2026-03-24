@@ -50,11 +50,10 @@ export const PropertyFormLayout: React.FC<PropertyFormLayoutProps> = ({ id }) =>
         <Step1TypeSelection />
       ) : (
         <>
-          <Step2BasicInfo />
-          <Step2Location />
+          {/* El Schema ahora gobierna todo el cuerpo del formulario (Localización, Operación, Características, Descripción) */}
           <Step2Features />
           <Step2Media />
-          {/* Navigation with publish buttons */}
+          {/* Navegación y publicación */}
           <Step2Navigation />
         </>
       )}
@@ -78,7 +77,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: uiSpacing.sm,
-    ...uiTypography.body,
+    fontSize: 14,
+    fontWeight: '600',
     color: uiColors.textMuted,
   },
 });

@@ -157,18 +157,22 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
 
   const handleSelectType = useCallback((nextTypeId: number) => {
     setSelectedType(current => {
+      // Si cambia el tipo, limpiamos campos sensibles
       if (current && current !== nextTypeId) {
         setForm(prev => {
-          const next = { ...prev };
+          const next = { ...prev, type_id: nextTypeId };
           TYPE_SENSITIVE_RAW_FIELDS.forEach(field => {
             next[normalizeRawFieldKey(field)] = '';
           });
           return next;
         });
+      } else {
+        // Siempre aseguramos que el form tenga el type_id actualizado
+        updateField('type_id', nextTypeId);
       }
       return nextTypeId;
     });
-  }, []);
+  }, [updateField]);
 
   const loadProperty = useCallback(async (id: string) => {
     setLoadingProperty(true);
@@ -228,8 +232,8 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
   const isLand = selectedTypeId === LAND_TYPE_ID;
   const isResidential = RESIDENTIAL_TYPE_IDS.includes(selectedTypeId);
   
-  const saleOnlyVisible = useMemo(() => OPERATION_OPTIONS.find(o => o.id === operationMode)?.useSalePrice ?? true, [operationMode]);
-  const rentalOnlyVisible = useMemo(() => OPERATION_OPTIONS.find(o => o.id === operationMode)?.useRentalPrice ?? false, [operationMode]);
+  const saleOnlyVisible = useMemo(() => OPERATION_OPTIONS.find(o => o.value === operationMode)?.useSalePrice ?? true, [operationMode]);
+  const rentalOnlyVisible = useMemo(() => OPERATION_OPTIONS.find(o => o.value === operationMode)?.useRentalPrice ?? false, [operationMode]);
 
   const showHeatingFuel = useMemo(() => {
     const val = String(getRawFieldValue('type_heating') || '');
@@ -296,7 +300,7 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
       type_id: selectedTypeId,
       type: selectedTypeId,
       title: String(form.title || '').trim(),
-      operation_type: OPERATION_OPTIONS.find(o => o.id === operationMode)?.operationType || 'Venta',
+      operation_type: OPERATION_OPTIONS.find(o => o.value === operationMode)?.operationType || 'Venta',
       price: preferredPrice > 0 ? preferredPrice : null,
       sale_price: salePrice > 0 ? salePrice : null,
       rental_price: rentalPrice > 0 ? rentalPrice : null,

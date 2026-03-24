@@ -1,0 +1,210 @@
+{
+  "version": "1.0.0",
+  "type": "casa_chalet",
+  "title": "AGREGAR CASA O CHALET",
+  "sections": [
+    {
+      "id": "location",
+      "title": "Localización del inmueble",
+      "fields": [
+        { "name": "city", "type": "text", "label": "Localidad", "required": true },
+        { "name": "street", "type": "text", "label": "Nombre de la vía", "required": true },
+        { "name": "block", "type": "text", "label": "Bloque / Escalera" },
+        { "name": "door", "type": "text", "label": "Puerta" },
+        { "name": "urbanization", "type": "text", "label": "Nombre de la urbanización" },
+        {
+          "name": "address_visibility",
+          "type": "radio",
+          "label": "Visibilidad en portales",
+          "options": [
+            { "id": "exact", "label": "Dirección exacta" },
+            { "id": "street_only", "label": "Mostrar solo calle" },
+            { "id": "hidden", "label": "Ocultar dirección" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operation",
+      "title": "Operación y precio",
+      "fields": [
+        {
+          "name": "operation_type",
+          "type": "select",
+          "label": "Operación",
+          "required": true,
+          "options": [
+            { "id": "sale", "label": "Venta" },
+            { "id": "rent", "label": "Alquiler" },
+            { "id": "both", "label": "Venta + Alquiler" }
+          ]
+        },
+        { "name": "sale_price", "type": "number", "label": "Precio de venta" },
+        { "name": "community_cost", "type": "number", "label": "Gastos de comunidad (€/mes)" },
+        { "name": "ibi", "type": "number", "label": "IBI (€/año)" },
+        {
+          "name": "mortgage",
+          "type": "radio",
+          "label": "Hipoteca pendiente",
+          "options": [
+            { "id": true, "label": "Sí" },
+            { "id": false, "label": "No" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "title": "Características de la casa o chalet",
+      "fields": [
+        {
+          "name": "property_subtype",
+          "type": "select",
+          "label": "Tipo de vivienda",
+          "options": [
+            { "id": "adosado", "label": "Chalet adosado" },
+            { "id": "pareado", "label": "Chalet pareado" },
+            { "id": "independiente", "label": "Chalet independiente" },
+            { "id": "rustica", "label": "Casa rústica" }
+          ]
+        },
+        {
+          "name": "condition",
+          "type": "select",
+          "label": "Estado de conservación",
+          "options": [
+            { "id": "good", "label": "Buen estado" },
+            { "id": "renovation", "label": "A reformar" },
+            { "id": "new", "label": "Obra nueva" }
+          ]
+        },
+        { "name": "built_area", "type": "number", "label": "m² construidos" },
+        { "name": "usable_area", "type": "number", "label": "m² útiles" },
+        { "name": "rooms", "type": "number", "label": "Nº habitaciones" },
+        { "name": "bathrooms", "type": "number", "label": "Nº baños" },
+        { "name": "floors", "type": "number", "label": "Nº plantas" },
+        { "name": "garage_spaces", "type": "number", "label": "Plazas de garaje" },
+        {
+          "name": "facade",
+          "type": "radio",
+          "label": "Fachada",
+          "options": [
+            { "id": "exterior", "label": "Exterior" },
+            { "id": "interior", "label": "Interior" }
+          ]
+        },
+        {
+          "name": "orientation",
+          "type": "multi_select",
+          "label": "Orientación",
+          "options": [
+            { "id": "north", "label": "Norte" },
+            { "id": "south", "label": "Sur" },
+            { "id": "east", "label": "Este" },
+            { "id": "west", "label": "Oeste" }
+          ]
+        },
+        {
+          "name": "extras",
+          "type": "multi_select",
+          "label": "Características adicionales",
+          "options": [
+            { "id": "ac", "label": "Aire acondicionado" },
+            { "id": "living_room", "label": "Salón" },
+            { "id": "pool", "label": "Piscina" },
+            { "id": "terrace", "label": "Terraza" },
+            { "id": "bbq", "label": "Barbacoa" },
+            { "id": "concierge", "label": "Conserje" },
+            { "id": "solar_panel", "label": "Panel solar" },
+            { "id": "patio", "label": "Patio" },
+            { "id": "storage", "label": "Trastero" },
+            { "id": "wardrobes", "label": "Armarios empotrados" },
+            { "id": "garage", "label": "Plaza de garaje" },
+            { "id": "garden", "label": "Jardín" },
+            { "id": "accessible", "label": "Adaptado para movilidad reducida" }
+          ]
+        },
+        {
+          "name": "category",
+          "type": "checkbox",
+          "label": "Categoría",
+          "options": [
+            { "id": "bank", "label": "Inmueble de banco" }
+          ]
+        },
+        {
+          "name": "heating_type",
+          "type": "select",
+          "label": "Tipo de calefacción",
+          "options": []
+        },
+        { "name": "construction_year", "type": "number", "label": "Año de construcción" }
+      ]
+    },
+    {
+      "id": "elevator",
+      "title": "Ascensor",
+      "fields": [
+        {
+          "name": "has_elevator",
+          "type": "radio",
+          "options": [
+            { "id": true, "label": "Sí" },
+            { "id": false, "label": "No" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "energy",
+      "title": "Energía y emisiones",
+      "fields": [
+        {
+          "name": "energy_rating",
+          "type": "select",
+          "label": "Calificación energética",
+          "options": []
+        },
+        { "name": "energy_consumption", "type": "number", "label": "kWh/m² año" },
+        { "name": "co2_emissions", "type": "number", "label": "kg CO2/m² año" }
+      ]
+    },
+    {
+      "id": "situation",
+      "title": "Situación de la vivienda",
+      "fields": [
+        {
+          "name": "situation",
+          "type": "radio",
+          "options": [
+            { "id": "occupied", "label": "Ocupada ilegalmente" },
+            { "id": "rented", "label": "Alquilada con inquilinos" },
+            { "id": "bare_ownership", "label": "Nuda propiedad" },
+            { "id": "none", "label": "Ninguna de las anteriores" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "description",
+      "title": "Descripción de la propiedad",
+      "fields": [
+        { "name": "title", "type": "text", "label": "Título", "required": true },
+        { "name": "video_url", "type": "text", "label": "Video URL" },
+        { "name": "description", "type": "textarea", "label": "Descripción" }
+      ]
+    },
+    {
+      "id": "media",
+      "title": "Fotos y videos",
+      "fields": [
+        { "name": "cover_image", "type": "image", "label": "Imagen principal", "multiple": false },
+        { "name": "gallery", "type": "image", "label": "Galería", "multiple": true },
+        { "name": "video", "type": "video", "label": "Video", "maxSizeMB": 50 }
+      ]
+    }
+  ],
+  "submit": {
+    "label": "Guardar y publicar anuncio"
+  }
+}

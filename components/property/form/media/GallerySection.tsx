@@ -19,7 +19,7 @@ export const GallerySection: React.FC<GallerySectionProps> = ({
   return (
     <View>
       <View style={styles.galleryHeader}>
-        <Text style={[styles.label, { marginTop: 0 }]}>Galeria de fotos</Text>
+        <Text style={[styles.label, { marginTop: 0 }]}>Galería</Text>
         <Text style={styles.countBadge}>{images.length} / 25</Text>
       </View>
 

@@ -101,6 +101,13 @@ export default function usePropertyFormCatalogs(typeId) {
         const payload = await getPropertyFormCatalogsApi(normalizedTypeId);
         if (cancelled) return;
 
+        // ESTRATEGIA BONUS DE DEBUG (Agent: DeepSeek): Captura de payloads extraños del CRM para Casas
+        if (__DEV__ && normalizedTypeId === 1) {
+          console.group(`[DEBUG] Catalogos para Casa/Chalet (ID: ${normalizedTypeId})`);
+          console.log('Payload crudo del CRM:', payload);
+          console.groupEnd();
+        }
+
         const normalized = normalizeCatalogs(payload);
         catalogsCache.set(normalizedTypeId, normalized);
         setCatalogs(normalized);

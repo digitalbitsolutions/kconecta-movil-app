@@ -16,9 +16,9 @@ export const RUSTIC_HOUSE_TYPE_ID = 15;
 export const RESIDENTIAL_TYPE_IDS = [HOUSE_CHALET_TYPE_ID, APARTMENT_TYPE_ID, RUSTIC_HOUSE_TYPE_ID];
 
 export const OPERATION_OPTIONS = [
-  { id: 'venta', label: 'Venta', operationType: 'Venta', useSalePrice: true, useRentalPrice: false },
-  { id: 'alquiler', label: 'Alquiler', operationType: 'Alquiler', useSalePrice: false, useRentalPrice: true },
-  { id: 'ambas', label: 'Venta + Alquiler', operationType: 'Venta y Alquiler', useSalePrice: true, useRentalPrice: true },
+  { value: 'venta', label: 'Venta', operationType: 'Venta', useSalePrice: true, useRentalPrice: false },
+  { value: 'alquiler', label: 'Alquiler', operationType: 'Alquiler', useSalePrice: false, useRentalPrice: true },
+  { value: 'ambas', label: 'Venta + Alquiler', operationType: 'Venta y Alquiler', useSalePrice: true, useRentalPrice: true },
 ];
 
 export const HAS_TENANTS_OPTIONS = [

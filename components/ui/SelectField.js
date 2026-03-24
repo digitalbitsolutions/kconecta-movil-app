@@ -26,31 +26,45 @@ export default function SelectField({
         </View>
       ) : hasOptions ? (
         <View style={styles.rowWrap}>
-          {options.map((option) => {
-            const selected = selectedValues.includes(option.value);
-            return (
-              <TouchableOpacity
-                key={`${option.value}`}
-                style={[styles.chip, selected ? styles.chipActive : null, disabled ? styles.chipDisabled : null]}
-                onPress={() => {
-                  if (!disabled) {
-                    onSelect(option.value);
-                  }
-                }}
-                disabled={disabled}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    selected ? styles.chipTextActive : null,
-                    disabled ? styles.chipTextDisabled : null,
-                  ]}
+          {options
+            .filter((opt) => {
+              // Soporte para id o value (Hardening)
+              const val = opt?.value ?? opt?.id;
+              const isValid = opt && val !== undefined && val !== null && opt.label;
+              if (!isValid && __DEV__) {
+                console.error(`[SelectField] Opcion invalida detectada en el campo "${label}":`, opt);
+              }
+              return isValid;
+            })
+            .map((option, index) => {
+              const val = option.value ?? option.id; // Valor prioritario
+              const selected = selectedValues.includes(val);
+              // Key robusta: combinamos value real con index
+              const uniqueKey = `${val}-${index}`;
+              
+              return (
+                <TouchableOpacity
+                  key={uniqueKey}
+                  style={[styles.chip, selected ? styles.chipActive : null, disabled ? styles.chipDisabled : null]}
+                  onPress={() => {
+                    if (!disabled) {
+                      onSelect(val);
+                    }
+                  }}
+                  disabled={disabled}
                 >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected ? styles.chipTextActive : null,
+                      disabled ? styles.chipTextDisabled : null,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
         </View>
       ) : (
         <View style={styles.feedbackBox}>
