@@ -147,7 +147,6 @@ export default function ServicesProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
 
-  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
@@ -174,7 +173,6 @@ export default function ServicesProfileScreen() {
       setProfile(nextProfile);
       setService(firstService);
 
-      setTitle(pick(firstService?.title, firstService?.name, ''));
       setDescription(
         pick(firstService?.description, nextProfile?.description, nextProfile?.profile_description, '')
       );
@@ -365,11 +363,12 @@ export default function ServicesProfileScreen() {
     setSaving(true);
     try {
       const serviceId = service?.id || service?.service_id;
+      const serviceTitle = pick(service?.title, service?.name, profile?.company_name, 'Servicio');
 
       if (serviceId) {
         const payload = new FormData();
-        payload.append('title', title.trim());
-        payload.append('name', title.trim());
+        payload.append('title', serviceTitle);
+        payload.append('name', serviceTitle);
         payload.append('description', description.trim());
         payload.append('availability', availability.trim());
 
@@ -479,9 +478,6 @@ export default function ServicesProfileScreen() {
             <Card style={styles.card}>
               <Text style={styles.label}>Proveedor</Text>
               <Text style={styles.value}>{company}</Text>
-
-              <Text style={styles.label}>Titulo del servicio</Text>
-              <TextInput value={title} onChangeText={setTitle} placeholder="Ej. Reformas en general" style={styles.input} />
 
               <Text style={styles.label}>Descripcion</Text>
               <TextInput

@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -317,7 +317,7 @@ export default function ServicesScreen() {
               accessibilityLabel={'Generar c\u00F3digo'}
             >
               <Ionicons 
-                name="color-wand-outline" 
+                name="dice-outline" 
                 size={20} 
                 color={generating ? colors.textMuted : colors.primary} 
               />
