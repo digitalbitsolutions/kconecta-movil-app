@@ -2,6 +2,21 @@
 
 Este plan define el flujo de trabajo con modelos locales para reducir costo de tokens.
 
+## Estado De Sincronizacion (2026-05-20)
+- **Modulo de Servicios (Proveedor)**:
+  - Creada e integrada la seccion de "Servicios" para proveedores (`app/(app)/services/index.js`).
+  - Ocultada la card de "Informacion del anunciante" por no ser necesaria para el usuario logueado.
+  - Redisenado el listado simple de "Servicios ofrecidos" en formato de botones/pildoras inactivas (responsive visual grid) con tokens de diseno.
+  - Eliminado el boton "Visita nuestra pagina web" de la seccion de Descripcion.
+  - **Codigos de trabajo**:
+    - Agregado soporte para generacion dinamica de codigos de trabajo.
+    - Implementada plantilla visual inicial `WK-XXXXXXXXXX` con color tenue en segundo plano.
+    - El codigo real se renderiza dinamicamente solo tras hacer clic en "Generar codigo".
+    - Eliminado el modal de éxito tras la generacion de codigo para que aparezca directamente en el placeholder.
+    - Disenado un boton de copia compacto con el icono `copy-outline` (Ionicons).
+    - Integrado `expo-clipboard` para copiar el codigo a la memoria real del dispositivo, mostrando un modal confirmando la copia exitosa.
+  - Cambios persistidos y commiteados en el repositorio local.
+
 ## Estado De Sincronizacion (2026-03-23)
 - Workspace principal activo: `C:\MeegDev\kconecta-app-movil`.
 - CRM web de referencia (solo consulta): `C:\MeegDev\kconecta-crm\web`.
