@@ -210,6 +210,7 @@ export default function ProfileScreen() {
           type: logoAsset.mimeType || logoAsset.type || 'image/jpeg',
         };
 
+        payload.append('provider_logo', logoFile);
         payload.append('logo', logoFile);
         payload.append('photo', logoFile);
         payload.append('image', logoFile);
@@ -247,6 +248,10 @@ export default function ProfileScreen() {
     () => {
       const explicit = pick(
         logoAsset?.uri,
+        profileSource?.provider_logo_url,
+        profileSource?.provider_logo_path,
+        user?.provider_logo_url,
+        user?.provider_logo_path,
         profileSource?.logo_url,
         profileSource?.logo,
         profileSource?.company_logo_url,
@@ -379,7 +384,7 @@ export default function ProfileScreen() {
             <Card style={styles.previewCard}>
               <View style={styles.previewImageWrap}>
                 {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.previewImage} resizeMode="cover" />
+                  <Image source={{ uri: profileImage }} style={styles.previewImage} resizeMode="contain" />
                 ) : (
                   <View style={styles.previewImageFallback}>
                     <Text style={styles.previewImageFallbackText}>Sin imagen</Text>
@@ -551,7 +556,7 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     width: '100%',
-    height: 190,
+    height: 150,
   },
   previewImageFallback: {
     width: '100%',

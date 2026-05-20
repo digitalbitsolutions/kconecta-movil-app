@@ -143,3 +143,10 @@
 - [x] Rediseno de nav inferior estilo pill manteniendo paleta corporativa.
 - [x] Ajustes de densidad/espaciado de chips para reducir aire lateral.
 - [x] Correccion de textos ES/UTF-8 visibles en Servicios.
+
+## Actualizacion Perfil Proveedor Mobile (2026-05-21)
+- [x] Rediseño integral de Mi perfil mobile-first inspirado en CRM web (estructura editable + preview).
+- [x] Integración frontend con contrato canónico de logo proveedor (provider_logo_url / provider_logo_path).
+- [x] Subida de logo alineada a backend (provider_logo) con compat legacy temporal.
+- [x] Resolución de logo correcta en card de perfil (sin usar portada de servicios).
+- [x] Ajuste visual final de logo en card (contain + altura optimizada).

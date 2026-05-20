@@ -287,3 +287,11 @@
 - [x] Ajustar nav inferior al mock (manteniendo colores corporativos).
 - [x] Compactar chips de servicios eliminando aire lateral interno/externo.
 - [x] Corregir caracteres especiales/tildes en textos de Servicios.
+
+## Perfil Proveedor Mobile (2026-05-21)
+- [x] Rehacer pantalla pp/(app)/profile/index.js a paridad funcional CRM en UX nativa móvil.
+- [x] Habilitar edición y guardado de datos personales con /me + services/profile.
+- [x] Incorporar bloque de preview de cuenta y estado de dirección validada.
+- [x] Corregir consumo de logo: priorizar provider_logo_url y provider_logo_path.
+- [x] Ajustar upload frontend al campo canónico provider_logo (manteniendo legacy temporal).
+- [x] Corregir visual del logo en card para evitar recorte/tamaño excesivo.
