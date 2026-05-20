@@ -266,7 +266,23 @@ export default function ServicesScreen() {
           <Text style={styles.sectionTitle}>Códigos de trabajo</Text>
           <Text style={styles.caption}>Genera un código y compártelo con tu cliente.</Text>
           <View style={styles.codesActions}>
-            <Button label={generating ? 'Generando...' : 'Generar código'} onPress={onGenerateCode} disabled={generating} style={styles.generateButton} />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.actionIconButton, generating && styles.actionIconButtonDisabled]}
+              onPress={onGenerateCode}
+              disabled={generating}
+              accessibilityRole="button"
+              accessibilityLabel="Generar código"
+            >
+              <Ionicons 
+                name="key-outline" 
+                size={20} 
+                color={generating ? colors.textMuted : colors.primary} 
+              />
+              <Text style={styles.actionIconLabel}>
+                {generating ? 'Generando' : 'Generar'}
+              </Text>
+            </TouchableOpacity>
             <View style={styles.codePlaceholderContainer}>
               <Ionicons 
                 name="ticket-outline" 
@@ -284,7 +300,7 @@ export default function ServicesScreen() {
             </View>
             <TouchableOpacity
               activeOpacity={0.7}
-              style={[styles.copyIconButton, !generatedCode && styles.copyIconButtonDisabled]}
+              style={[styles.actionIconButton, !generatedCode && styles.actionIconButtonDisabled]}
               onPress={async () => {
                 if (!generatedCode) {
                   Alert.alert('Sin código', 'Todavía no hay código para copiar.');
@@ -298,9 +314,12 @@ export default function ServicesScreen() {
             >
               <Ionicons 
                 name="copy-outline" 
-                size={18} 
+                size={20} 
                 color={generatedCode ? colors.primary : colors.textMuted} 
               />
+              <Text style={styles.actionIconLabel}>
+                Copiar
+              </Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={() => router.push('/services/work-codes')}>
@@ -383,29 +402,32 @@ const styles = StyleSheet.create({
   codesActions: {
     flexDirection: 'row',
     gap: spacing.xs,
-    alignItems: 'stretch',
+    alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  generateButton: {
-    flex: 1.3,
-    paddingHorizontal: spacing.sm,
-  },
-  copyIconButton: {
-    width: 46,
-    height: 46,
+  actionIconButton: {
+    width: 64,
+    height: 56,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: spacing.xxs,
   },
-  copyIconButtonDisabled: {
+  actionIconButtonDisabled: {
     opacity: 0.55,
     backgroundColor: colors.backgroundSecondary,
   },
+  actionIconLabel: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   codePlaceholderContainer: {
-    flex: 1.2,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -415,7 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: spacing.xs,
     gap: spacing.xxs,
-    height: 46,
+    height: 56,
   },
   ticketIcon: {
     marginRight: 2,
