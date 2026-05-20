@@ -149,6 +149,8 @@
 - [x] Replicar patron de detalle/preview movil a `Terreno` (type 9).
 - [x] Ajustar API CRM de detalle para exponer labels relacionales faltantes de `Piso`, `Garaje` y `Terreno`.
 - [x] Ajustar API CRM para persistir `cover_image` y `more_images[]` en `store/update`.
+- [x] Integrar CTA desde login hacia registro y autologin post-registro.
+- [ ] QA E2E en produccion controlada con cuentas de prueba y limpieza operativa.
 - [x] Ajustar API CRM para persistir `video` en `store/update`.
 - [x] Verificar E2E real de persistencia de `cover_image`, `more_images[]` y `video` con token/credenciales API validas.
   - Token API valido confirmado contra `GET /me` en produccion.
@@ -192,13 +194,18 @@
   - Comparativa funcional/visual cerrada en desarrollo con contraste directo de formularios CRM + build web OK.
 - [x] QA visual mobile de detalle/preview por tipo (comparativa visual final contra CRM web).
   - Smoke tecnico completado sobre detalle por los 6 tipos con datos reales (`type_id`: 1, 4, 9, 13, 14, 15).
-  - Los payloads de detalle consultados devuelven `cover_image_url` y galerias pobladas en propiedades reales de muestra.
+  - The payloads de detalle consultados devuelven `cover_image_url` y galerias pobladas en propiedades reales de muestra.
   - Pase correctivo reciente aplicado sobre detalle/preview:
     - recuperado acceso a `Video` cuando la propiedad lo tiene;
     - recuperado enlace `Sitio web` (`page_url`) dentro de la ficha;
     - recuperados metadatos superiores `Bloque / Esc.` y `Puerta` bajo cabecera;
     - corregido texto de contacto a `Ultima actualizacion`.
   - Cierre de QA funcional/visual apoyado en contraste CRM + build + validacion real por rol.
+
+## Infraestructura Local Android (Completado)
+- [x] Fix: Bloqueo de toolchain Gradle (`IBM_SEMERU`) resuelto con Gradle 8.13.
+- [x] Fix: Error de descarga de bundle remoto en Expo Go resuelto mediante configuracion en `app.json`.
+- [x] Setup: Entorno Java estabilizado con JDK 21.
 
 ## Restricciones Activas
 - [x] Solo inmuebles en esta etapa.
@@ -253,3 +260,21 @@
 - [x] Fix: Confirmación de borrado universal (Web/Mobile) (DeepSeek).
 - [ ] Auditoría de seguridad del mapeo de datos en Perfil (CLIENT-SIDE) (Mistral).
 - [ ] Implementar sistema de temas: Modo Oscuro / Claro inicial (Qwen).
+
+## Registro Nativo Proveedor (Nuevo Frente)
+- [x] Auditoria online de registro CRM productivo (18-05-2026).
+  - `GET /register`: disponible con selector de tipo de usuario (`4/5/6`).
+  - `GET /api/register`: responde `404` (sin endpoint API publico actual).
+- [ ] Acordar y publicar endpoint backend: `POST /api/mobile/register-provider`.
+- [ ] Forzar `user_level_id=4` en backend (no editable desde app).
+- [ ] Definir validador backend (email unico, password fuerte, campos opcionales de proveedor).
+- [x] Implementar cliente nativo `registerProviderApi` en `api/client.js`.
+- [x] Crear pantalla `app/register.js` (solo proveedor) y conectar con login.
+- [x] Implementar autologin post-registro (guardar token + `router.replace('/(app)')`).
+- [ ] Pruebas E2E controladas en produccion + limpieza de cuentas QA.
+
+## Infraestructura Local (Cerrado)
+- [x] Resolver error de toolchain `IBM_SEMERU` en Android (Ajuste a Gradle 8.13).
+- [x] Configurar `JAVA_HOME` estable para el build de Android (JDK 21 AS JBR).
+- [x] Corregir error "remote update" en Expo Go/Dev Client (Disable updates en app.json).
+- [x] Despliegue exitoso en emulador local (Medium Phone).

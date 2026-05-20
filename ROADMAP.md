@@ -119,3 +119,19 @@
 - [x] Fix: Confirmación de borrado universal (Web/Mobile) (DeepSeek).
 - [ ] Auditoría de seguridad del mapeo de datos en Perfil (CLIENT-SIDE) (Mistral).
 - [ ] Implementar sistema de temas: Modo Oscuro / Claro inicial (Qwen).
+
+## Fase 11 - Onboarding Nativo Proveedor (Abierta)
+// Agent: Codex - FOCO: Registro nativo exclusivo para proveedor de servicios
+- [x] Auditoria online de registro web productivo (`GET /register`) completada.
+  - Confirmado en produccion: opciones de tipo de usuario incluyen `4=Proveedor`, `5=Agente`, `6=Cliente final`.
+  - Confirmado en produccion: endpoint `POST /api/register` no disponible (`404` al consultar `GET /api/register`).
+- [ ] Definir contrato backend para `POST /api/mobile/register-provider` (forzando `user_level_id=4` server-side).
+- [ ] Implementar endpoint backend con validaciones, rate limit y respuesta con token.
+- [x] Implementar pantalla nativa `register` (solo proveedor) y consumo de API.
+- [x] Integrar CTA desde login hacia registro y autologin post-registro.
+- [ ] QA E2E en produccion controlada con cuentas de prueba y limpieza operativa.
+
+## Fase 12 - Infraestructura Local Android (Completado)
+- [x] Fix: Bloqueo de toolchain Gradle (`IBM_SEMERU`) resuelto con Gradle 8.13.
+- [x] Fix: Error de descarga de bundle remoto en Expo Go resuelto mediante configuracion en `app.json`.
+- [x] Setup: Entorno Java estabilizado con JDK 21.
