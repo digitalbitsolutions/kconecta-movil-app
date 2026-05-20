@@ -13,7 +13,7 @@ Este plan define el flujo de trabajo con modelos locales para reducir costo de t
     - Implementada plantilla visual inicial `WK-XXXXXXXXXX` con color tenue en segundo plano.
     - El codigo real se renderiza dinamicamente solo tras hacer clic en "Generar codigo".
     - Eliminado el modal de éxito tras la generacion de codigo para que aparezca directamente en el placeholder.
-    - Disenado un boton de copia compacto con el icono `copy-outline` (Ionicons).
+    - Disenados botones de accion de tipo pila vertical (icono + leyenda) para Generar (icono `key-outline` y leyenda "Generar") y Copiar (icono `copy-outline` y leyenda "Copiar"), alineados a una altura de 56px.
     - Integrado `expo-clipboard` para copiar el codigo a la memoria real del dispositivo, mostrando un modal confirmando la copia exitosa.
   - Cambios persistidos y commiteados en el repositorio local.
 
