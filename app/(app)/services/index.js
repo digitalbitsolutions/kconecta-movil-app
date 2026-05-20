@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ImageBackground,
   Linking,
   RefreshControl,
   ScrollView,
@@ -212,9 +213,6 @@ export default function ServicesScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.title}>Servicios</Text>
-        <Text style={styles.subtitle}>Gestiona tu perfil y los servicios que ofreces</Text>
-
         {errorText ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{errorText}</Text>
@@ -226,25 +224,71 @@ export default function ServicesScreen() {
           </View>
         ) : null}
 
-        <Image source={{ uri: heroImage }} style={styles.heroImage} resizeMode="cover" />
+        <ImageBackground source={{ uri: heroImage }} style={styles.heroCard} imageStyle={styles.heroImage} resizeMode="cover">
+          <View style={styles.heroOverlay}>
+            <View style={styles.heroChip}>
+              <Text style={styles.heroChipText}>kconecta</Text>
+            </View>
+            <Text style={styles.heroTitle}>Servicios</Text>
+            <Text style={styles.heroSubtitle}>Gestiona los servicios que ofreces.</Text>
+          </View>
+        </ImageBackground>
 
         <View style={styles.twoCol}>
           <Card style={styles.colCard}>
             <View style={styles.sectionHeadInline}>
-              <Text style={styles.sectionTitle}>Servicios ofrecidos</Text>
+              <View style={styles.sectionTitleWrap}>
+                <View style={styles.sectionIconBubble}>
+                  <Ionicons name="reorder-three-outline" size={14} color="#16979D" />
+                </View>
+                <View>
+                  <Text style={styles.sectionTitle}>{'Descripci\u00F3n'}</Text>
+                  <Text style={styles.sectionSubtitle}>{'Presentaci\u00F3n comercial'}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push('/services/profile')}
+                style={styles.editIconButton}
+                accessibilityRole="button"
+                accessibilityLabel={'Editar descripci\u00F3n'}
+              >
+                <Ionicons name="pencil-outline" size={14} color="#16979D" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.description}>{description}</Text>
+          </Card>
+        </View>
+
+
+        
+
+
+        <View style={styles.twoCol}>
+          <Card style={styles.colCard}>
+            <View style={styles.sectionHeadInline}>
+              <View style={styles.sectionTitleWrap}>
+                <View style={styles.sectionIconBubble}>
+                  <Ionicons name="business-outline" size={14} color="#16979D" />
+                </View>
+                <View>
+                  <Text style={styles.sectionTitle}>Servicios ofrecidos</Text>
+                  <Text style={styles.sectionSubtitle}>Especialidades</Text>
+                </View>
+              </View>
               <TouchableOpacity
                 onPress={() => router.push('/services/profile')}
                 style={styles.editIconButton}
                 accessibilityRole="button"
                 accessibilityLabel="Editar servicios"
               >
-                <Text style={styles.editIcon}>✎</Text>
+                <Ionicons name="pencil-outline" size={14} color="#16979D" />
               </TouchableOpacity>
             </View>
             {offeredServices.length ? (
               <View style={styles.tagsContainer}>
                 {offeredServices.map((item) => (
                   <View key={item} style={styles.serviceButton}>
+                    <Ionicons name="construct-outline" size={12} color="#16979D" style={styles.serviceChipIcon} />
                     <Text style={styles.serviceButtonText}>{item}</Text>
                   </View>
                 ))}
@@ -255,16 +299,14 @@ export default function ServicesScreen() {
           </Card>
         </View>
 
-        <View style={styles.twoCol}>
-          <Card style={styles.colCard}>
-            <Text style={styles.sectionTitle}>Descripcion</Text>
-            <Text style={styles.description}>{description}</Text>
-          </Card>
-        </View>
-
         <Card style={styles.fullCard}>
-          <Text style={styles.sectionTitle}>Códigos de trabajo</Text>
-          <Text style={styles.caption}>Genera un código y compártelo con tu cliente.</Text>
+          <View style={styles.sectionTitleWrap}>
+            <View style={styles.sectionIconBubble}>
+              <Ionicons name="cube-outline" size={14} color="#16979D" />
+            </View>
+            <Text style={styles.sectionTitle}>{'C\u00F3digos de trabajo'}</Text>
+          </View>
+          <Text style={styles.caption}>{'Genera un c\u00F3digo y comp\u00E1rtelo con tu cliente.'}</Text>
           <View style={styles.codesActions}>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -272,10 +314,10 @@ export default function ServicesScreen() {
               onPress={onGenerateCode}
               disabled={generating}
               accessibilityRole="button"
-              accessibilityLabel="Generar código"
+              accessibilityLabel={'Generar c\u00F3digo'}
             >
               <Ionicons 
-                name="key-outline" 
+                name="color-wand-outline" 
                 size={20} 
                 color={generating ? colors.textMuted : colors.primary} 
               />
@@ -303,14 +345,14 @@ export default function ServicesScreen() {
               style={[styles.actionIconButton, !generatedCode && styles.actionIconButtonDisabled]}
               onPress={async () => {
                 if (!generatedCode) {
-                  Alert.alert('Sin código', 'Todavía no hay código para copiar.');
+                  Alert.alert('Sin c\u00F3digo', 'Todav\u00EDa no hay c\u00F3digo para copiar.');
                   return;
                 }
                 await Clipboard.setStringAsync(generatedCode);
-                Alert.alert('Código copiado', 'El código ha sido copiado con éxito.');
+                Alert.alert('C\u00F3digo copiado', 'El c\u00F3digo ha sido copiado con \u00E9xito.');
               }}
               accessibilityRole="button"
-              accessibilityLabel="Copiar código"
+              accessibilityLabel={'Copiar c\u00F3digo'}
             >
               <Ionicons 
                 name="copy-outline" 
@@ -323,7 +365,7 @@ export default function ServicesScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={() => router.push('/services/work-codes')}>
-            <Text style={styles.moreLink}>Ver todos los códigos</Text>
+            <Text style={styles.moreLink}>{'Ver todos los c\u00F3digos'}</Text>
           </TouchableOpacity>
         </Card>
       </ScrollView>
@@ -332,12 +374,12 @@ export default function ServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.backgroundSecondary },
+  safeArea: { flex: 1, backgroundColor: '#D8E0EA' },
   content: { padding: spacing.md, paddingBottom: spacing.xxxl + 56 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: spacing.sm, ...typography.body, color: colors.textMuted },
-  title: { ...typography.h1, color: colors.textPrimary },
-  subtitle: { marginTop: spacing.xxs, marginBottom: spacing.sm, ...typography.caption, color: colors.textMuted },
+  title: { ...typography.h1, color: '#0C1F3E' },
+  subtitle: { marginTop: spacing.xxs, marginBottom: spacing.sm, ...typography.caption, color: '#4D607A' },
   errorBanner: {
     borderWidth: 1,
     borderColor: colors.danger,
@@ -356,18 +398,96 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   warnText: { ...typography.caption, color: colors.warning },
-  heroImage: { width: '100%', height: 130, borderRadius: 12, marginBottom: spacing.sm },
+  heroCard: {
+    width: '100%',
+    minHeight: 180,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  heroImage: {
+    borderRadius: 24,
+  },
+  heroOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(8, 31, 81, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(35, 185, 199, 0.26)',
+  },
+  heroChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(207, 227, 255, 0.45)',
+    backgroundColor: 'rgba(225, 241, 255, 0.22)',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xxs + 1,
+    marginBottom: spacing.sm,
+  },
+  heroChipText: {
+    ...typography.captionStrong,
+    color: '#FFFFFF',
+    textTransform: 'lowercase',
+    letterSpacing: 0.4,
+  },
+  heroTitle: {
+    ...typography.h1,
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
+  },
+  heroSubtitle: {
+    ...typography.body,
+    color: '#DCE9FF',
+    lineHeight: 22,
+    maxWidth: '92%',
+  },
   twoCol: { flexDirection: 'column', gap: spacing.sm, marginBottom: spacing.sm },
-  colCard: { marginBottom: 0 },
+  colCard: {
+    marginBottom: 0,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C8D4E3',
+    backgroundColor: '#F4F7FB',
+    shadowColor: '#0C1F3E',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
   sectionHeadInline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xs, flex: 1, paddingRight: spacing.xs },
-  editIconButton: {
+  sectionTitle: { ...typography.h3, color: '#12284A', marginBottom: spacing.xs, flex: 1, paddingRight: spacing.xs },
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+  },
+  sectionIconBubble: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#9DDDE1',
-    backgroundColor: '#E9FBF8',
+    borderColor: '#CBE8EA',
+    backgroundColor: '#EAF8F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -2,
+  },
+  sectionSubtitle: {
+    ...typography.caption,
+    color: '#7B8EA8',
+    marginTop: -2,
+  },
+  editIconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#B8DCE0',
+    backgroundColor: '#E8F8F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -378,40 +498,53 @@ const styles = StyleSheet.create({
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 6,
     marginTop: spacing.xs,
+    alignItems: 'flex-start',
   },
   serviceButton: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: '#EAF0F5',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    borderColor: '#D2DDE9',
+    borderRadius: 12,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs + 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  serviceChipIcon: {
+    marginTop: 1,
   },
   serviceButtonText: {
     ...typography.captionStrong,
-    color: colors.textMuted,
+    color: '#1A2C4A',
   },
   emptyText: { ...typography.caption, color: colors.textMuted },
-  description: { ...typography.body, color: colors.textSoft, lineHeight: 20 },
-  fullCard: { marginBottom: spacing.sm },
-  caption: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
+  description: { ...typography.body, color: '#1F3354', lineHeight: 20, fontWeight: '700' },
+  fullCard: {
+    marginBottom: spacing.sm,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C8D4E3',
+    backgroundColor: '#F4F7FB',
+  },
+  caption: { ...typography.caption, color: '#5A6F8E', marginBottom: spacing.sm },
   codesActions: {
     flexDirection: 'row',
     gap: spacing.xs,
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   actionIconButton: {
-    width: 64,
-    height: 56,
-    borderRadius: radius.sm,
+    width: 82,
+    height: 64,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: '#CDD8E6',
+    backgroundColor: '#EAF1F7',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xxs,
@@ -422,34 +555,43 @@ const styles = StyleSheet.create({
   },
   actionIconLabel: {
     ...typography.caption,
-    fontSize: 10,
-    color: colors.textMuted,
+    fontSize: 11,
+    color: '#0F2A52',
     marginTop: 2,
+    fontWeight: '700',
   },
   codePlaceholderContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: '#EAF1F7',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderColor: '#CDD8E6',
+    borderRadius: 14,
     paddingHorizontal: spacing.xs,
     gap: spacing.xxs,
-    height: 56,
+    height: 64,
   },
   ticketIcon: {
     marginRight: 2,
   },
   placeholderCodeText: {
     ...typography.captionStrong,
-    color: colors.primary,
+    color: '#2E4B74',
   },
   placeholderCodeTextMuted: {
     ...typography.captionStrong,
     color: colors.textMuted,
     opacity: 0.6,
   },
-  moreLink: { ...typography.captionStrong, color: colors.accentStrong, textAlign: 'right' },
+  moreLink: { ...typography.captionStrong, color: '#16979D', textAlign: 'right' },
 });
+
+
+
+
+
+
+
+

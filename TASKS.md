@@ -278,3 +278,12 @@
 - [x] Configurar `JAVA_HOME` estable para el build de Android (JDK 21 AS JBR).
 - [x] Corregir error "remote update" en Expo Go/Dev Client (Disable updates en app.json).
 - [x] Despliegue exitoso en emulador local (Medium Phone).
+
+## UI Servicios (2026-05-20)
+- [x] Aplicar propuesta visual de cards en pantalla de Servicios (solo estilos).
+- [x] Cambiar icono de accion Generar por varita (diferente de Copiar).
+- [x] Reordenar cards: Descripcion arriba y Servicios ofrecidos debajo.
+- [x] Hacer editable la card Descripcion (acceso a /services/profile).
+- [x] Ajustar nav inferior al mock (manteniendo colores corporativos).
+- [x] Compactar chips de servicios eliminando aire lateral interno/externo.
+- [x] Corregir caracteres especiales/tildes en textos de Servicios.

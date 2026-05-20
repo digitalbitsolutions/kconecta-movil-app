@@ -135,3 +135,11 @@
 - [x] Fix: Bloqueo de toolchain Gradle (`IBM_SEMERU`) resuelto con Gradle 8.13.
 - [x] Fix: Error de descarga de bundle remoto en Expo Go resuelto mediante configuracion en `app.json`.
 - [x] Setup: Entorno Java estabilizado con JDK 21.
+
+## Actualizacion UI Servicios (2026-05-20)
+- [x] Hero superior con overlay corporativo y chip 'kconecta'.
+- [x] Reorden de cards: 'Descripcion' antes de 'Servicios ofrecidos'.
+- [x] Iconografia en cards/chips y boton de editar en Descripcion.
+- [x] Rediseno de nav inferior estilo pill manteniendo paleta corporativa.
+- [x] Ajustes de densidad/espaciado de chips para reducir aire lateral.
+- [x] Correccion de textos ES/UTF-8 visibles en Servicios.
