@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { useAuthStore } from '../store/useAuthStore';
 
 const WEB_API_OVERRIDE_KEY = 'kconecta_api_base_url';
 
@@ -132,6 +133,18 @@ export const getApiErrorDetails = (error) => {
   };
 };
 
+export const getFriendlyApiMessage = (error, fallback = 'Ocurrió un error. Intenta de nuevo.') => {
+  const details = getApiErrorDetails(error);
+  const backendMessage =
+    typeof details.data?.message === 'string' ? details.data.message.trim() : '';
+
+  if (details.status === 429) {
+    return backendMessage || 'Demasiadas solicitudes. Espera un momento e intenta nuevamente.';
+  }
+
+  return backendMessage || details.message || fallback;
+};
+
 const isFormDataPayload = (value) => typeof FormData !== 'undefined' && value instanceof FormData;
 
 apiClient.interceptors.request.use(async (config) => {
@@ -162,8 +175,18 @@ apiClient.interceptors.request.use(async (config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const details = getApiErrorDetails(error);
+    const status = details.status;
+
+    if (status === 401 || status === 403) {
+      try {
+        await useAuthStore.getState().logout();
+      } catch (logoutError) {
+        console.warn('Session cleanup failed after auth error:', logoutError);
+      }
+    }
+
     console.warn(`API Error [${details.url}]:`, details.data || details.message);
     return Promise.reject(error);
   }
@@ -397,4 +420,198 @@ export const processAgentTask = async (taskType, input) => {
     console.warn(`API Error [${details.url}]:`, details.data || details.message);
     throw error;
   }
+};
+
+export const registerProviderApi = async (payload) => {
+  const candidates = [
+    '/mobile/register-provider',
+    '/agent/mobile/register-provider',
+    '/register',
+  ];
+
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
+      return response.data;
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+const extractArrayPayload = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};
+
+const extractObjectPayloadSafe = (payload) => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+    return payload.data;
+  }
+  return payload;
+};
+
+export const getServicesApi = async (options = {}) => {
+  const { perPage = 50 } = options;
+  const candidates = ['/agent/services', '/services'];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() =>
+        apiClient.get(endpoint, { params: { per_page: perPage } })
+      );
+      return extractArrayPayload(response.data);
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const getServiceProfileApi = async () => {
+  const candidates = ['/agent/services/profile', '/agent/service-profile'];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.get(endpoint));
+      return extractObjectPayloadSafe(response.data) || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const updateServiceProfileApi = async (payload) => {
+  const candidates = ['/agent/services/profile', '/agent/service-profile', '/me'];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      if (isFormDataPayload(payload)) {
+        const hasGetter = typeof payload.get === 'function';
+        const hasOverride = hasGetter ? Boolean(payload.get('_method')) : false;
+        if (!hasOverride) payload.append('_method', 'PATCH');
+        const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
+        return extractObjectPayloadSafe(response.data) || response.data || {};
+      }
+
+      const response = await withBaseUrlFallback(() => apiClient.patch(endpoint, payload));
+      return extractObjectPayloadSafe(response.data) || response.data || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const updateAgentServiceApi = async (serviceId, payload) => {
+  if (!serviceId) {
+    throw new Error('Service id is required');
+  }
+
+  const candidates = [`/agent/services/${serviceId}`, `/services/${serviceId}`];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      if (isFormDataPayload(payload)) {
+        const hasGetter = typeof payload.get === 'function';
+        const hasOverride = hasGetter ? Boolean(payload.get('_method')) : false;
+        if (!hasOverride) payload.append('_method', 'PATCH');
+        const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
+        return extractObjectPayloadSafe(response.data) || response.data || {};
+      }
+
+      const response = await withBaseUrlFallback(() => apiClient.patch(endpoint, payload));
+      return extractObjectPayloadSafe(response.data) || response.data || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const getServiceWorkCodesApi = async () => {
+  const candidates = ['/agent/services/work-codes', '/agent/work-codes'];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.get(endpoint));
+      return extractObjectPayloadSafe(response.data) || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const generateServiceWorkCodeApi = async () => {
+  const candidates = ['/agent/services/work-codes', '/agent/work-codes'];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.post(endpoint, {}));
+      return extractObjectPayloadSafe(response.data) || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
 };
