@@ -150,3 +150,9 @@
 - [x] Subida de logo alineada a backend (provider_logo) con compat legacy temporal.
 - [x] Resolución de logo correcta en card de perfil (sin usar portada de servicios).
 - [x] Ajuste visual final de logo en card (contain + altura optimizada).
+
+## Soporte Expo Go Local (2026-05-21)
+- [x] Diagnostico de conflicto de puerto: 8081 ocupado por proceso node (PID 17872).
+- [x] Arranque limpio de Metro con npx expo start --clear en Expo Go.
+- [x] Validacion funcional en emulador Android: dashboard carga correctamente y contador de servicios consistente.
+

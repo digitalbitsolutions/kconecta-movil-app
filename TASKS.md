@@ -295,3 +295,9 @@
 - [x] Corregir consumo de logo: priorizar provider_logo_url y provider_logo_path.
 - [x] Ajustar upload frontend al campo canónico provider_logo (manteniendo legacy temporal).
 - [x] Corregir visual del logo en card para evitar recorte/tamaño excesivo.
+
+## Soporte Expo Go Local (2026-05-21)
+- [x] Liberar conflicto de puerto Metro (8081) identificado en arranque local.
+- [x] Ejecutar Expo Go con cache limpia (npx expo start --clear).
+- [x] Validar en emulador Android carga de app y numero correcto de servicios en dashboard.
+
