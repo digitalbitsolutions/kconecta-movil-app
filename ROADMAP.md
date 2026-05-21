@@ -156,3 +156,10 @@
 - [x] Arranque limpio de Metro con npx expo start --clear en Expo Go.
 - [x] Validacion funcional en emulador Android: dashboard carga correctamente y contador de servicios consistente.
 
+- [x] Nota operativa: fue necesario reiniciar el PC para que Expo Go aplicara correctamente los cambios del conteo de servicios.
+
+## Perfil Proveedor - Estabilidad Final (2026-05-21)
+- [x] Corregido error de sintaxis en `app/(app)/profile/index.js` (`Unexpected token`) por cierre incompleto del componente/estilos.
+- [x] Restaurado bloque `StyleSheet.create(...)` y estructura JSX final para compilacion estable en Expo Go.
+- [x] Corregidos textos visibles en espanol (UTF-8) en Mi perfil: Direccion, Numero, Razon, contrasena, sesion.
+- [x] Modal de tipo de documento validado visualmente en emulador Android.

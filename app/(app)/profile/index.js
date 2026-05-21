@@ -1,40 +1,47 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  ActivityIndicator, 
-  Alert, 
-  Image, 
-  RefreshControl, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View 
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { 
-  getApiErrorDetails, 
-  getMeApi, 
-  getServiceProfileApi, 
-  updateServiceProfileApi 
+import { Ionicons } from '@expo/vector-icons';
+import {
+  getApiErrorDetails,
+  getFriendlyApiMessage,
+  getMeApi,
+  getServiceProfileApi,
+  updateServiceProfileApi,
 } from '../../../api/client';
 import { Button, Card, colors, spacing, typography } from '../../../components/ui';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { 
-  extractUser, 
-  userLevelName,
-  getFriendlyApiMessage,
-  sanitizeText
-} from '../../../utils/dataMappers';
+import { extractUser, sanitizeText, userLevelName } from '../../../utils/dataMappers';
 
 const pick = (...args) => {
-  for (let i = 0; i < args.length; i++) {
+  for (let i = 0; i < args.length; i += 1) {
     const current = args[i];
     if (typeof current === 'string' && current.trim()) return current.trim();
     if (typeof current === 'number' && Number.isFinite(current)) return String(current);
   }
   return '';
 };
+
+const DOCUMENT_TYPE_OPTIONS = [
+  { label: 'DNI', value: 'dni' },
+  { label: 'NIE', value: 'nie' },
+  { label: 'NIF', value: 'nif' },
+  { label: 'CIF', value: 'cif' },
+  { label: 'Pasaporte', value: 'passport' },
+];
 
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 const absolutizeUrl = (value) => {
@@ -91,13 +98,13 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [landlinePhone, setLandlinePhone] = useState('');
   const [docType, setDocType] = useState('');
   const [docNumber, setDocNumber] = useState('');
   const [address, setAddress] = useState('');
   const [username, setUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [logoAsset, setLogoAsset] = useState(null);
+  const [docTypeModalVisible, setDocTypeModalVisible] = useState(false);
 
   const hydrateForm = (rawMeUser, rawProfile) => {
     const merged = { ...(rawProfile || {}) };
@@ -112,7 +119,6 @@ export default function ProfileScreen() {
     setLastName(pick(rawMeUser?.last_name, merged?.last_name));
     setEmail(pick(rawMeUser?.email, merged?.email));
     setPhone(pick(rawMeUser?.phone, rawMeUser?.mobile_phone, merged?.phone, merged?.mobile_phone));
-    setLandlinePhone(pick(rawMeUser?.landline_phone, merged?.landline_phone));
     setDocType(pick(rawMeUser?.document_type, merged?.document_type, merged?.doc_type));
     setDocNumber(pick(rawMeUser?.document_number, merged?.document_number, merged?.document));
     setAddress(pick(rawMeUser?.address, merged?.address, merged?.location));
@@ -132,7 +138,7 @@ export default function ProfileScreen() {
       try {
         serviceProfile = await getServiceProfileApi();
       } catch (_serviceError) {
-        // keep /me data as source of truth
+        // Keep /me data as source of truth when service profile fails.
       }
 
       hydrateForm(meUser, serviceProfile);
@@ -196,13 +202,11 @@ export default function ProfileScreen() {
         payload.append('last_name', lastName.trim());
         payload.append('email', email.trim());
         payload.append('phone', phone.trim());
-        payload.append('landline_phone', landlinePhone.trim());
+        payload.append('landline_phone', '');
         payload.append('document_type', docType.trim());
         payload.append('document_number', docNumber.trim());
         payload.append('address', address.trim());
-        if (newPassword.trim()) {
-          payload.append('password', newPassword.trim());
-        }
+        if (newPassword.trim()) payload.append('password', newPassword.trim());
 
         const logoFile = {
           uri: logoAsset.uri,
@@ -222,19 +226,15 @@ export default function ProfileScreen() {
           last_name: lastName.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          landline_phone: landlinePhone.trim(),
+          landline_phone: '',
           document_type: docType.trim(),
           document_number: docNumber.trim(),
           address: address.trim(),
         };
-
-        if (newPassword.trim()) {
-          payload.password = newPassword.trim();
-        }
+        if (newPassword.trim()) payload.password = newPassword.trim();
       }
 
       await updateServiceProfileApi(payload);
-
       await loadProfile();
       Alert.alert('Guardado', 'Se actualizaron los datos del perfil.');
     } catch (error) {
@@ -244,37 +244,35 @@ export default function ProfileScreen() {
     }
   };
 
-  const profileImage = useMemo(
-    () => {
-      const explicit = pick(
-        logoAsset?.uri,
-        profileSource?.provider_logo_url,
-        profileSource?.provider_logo_path,
-        user?.provider_logo_url,
-        user?.provider_logo_path,
-        profileSource?.logo_url,
-        profileSource?.logo,
-        profileSource?.company_logo_url,
-        profileSource?.company_logo,
-        profileSource?.photo_url,
-        profileSource?.photo,
-        profileSource?.image_url,
-        profileSource?.avatar_url,
-        user?.photo_url,
-        user?.photo,
-        user?.image_url,
-        user?.avatar_url
-      );
-      if (explicit) return absolutizeUrl(explicit);
-      return findProfileImageInObject(profileSource) || findProfileImageInObject(user);
-    },
-    [logoAsset, profileSource, user]
-  );
+  const profileImage = useMemo(() => {
+    const explicit = pick(
+      logoAsset?.uri,
+      profileSource?.provider_logo_url,
+      profileSource?.provider_logo_path,
+      user?.provider_logo_url,
+      user?.provider_logo_path,
+      profileSource?.logo_url,
+      profileSource?.logo,
+      profileSource?.company_logo_url,
+      profileSource?.company_logo,
+      profileSource?.photo_url,
+      profileSource?.photo,
+      profileSource?.image_url,
+      profileSource?.avatar_url,
+      user?.photo_url,
+      user?.photo,
+      user?.image_url,
+      user?.avatar_url
+    );
+    if (explicit) return absolutizeUrl(explicit);
+    return findProfileImageInObject(profileSource) || findProfileImageInObject(user);
+  }, [logoAsset, profileSource, user]);
 
   const displayName = pick(`${firstName} ${lastName}`.trim(), username, profileSource?.name, 'Usuario');
   const displayEmail = pick(email, profileSource?.email, '-');
   const roleName = userLevelName(user || profileSource || {});
   const hasValidAddress = Boolean(address.trim() && address.trim().length >= 8);
+  const selectedDocLabel = DOCUMENT_TYPE_OPTIONS.find((item) => item.value === docType)?.label || '...';
 
   return (
     <View style={styles.screen}>
@@ -282,8 +280,15 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.title}>Mi perfil</Text>
-        <Text style={styles.subtitle}>Actualiza tus datos personales</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>Mi perfil</Text>
+            <Text style={styles.subtitle}>Actualiza tus datos personales</Text>
+          </View>
+          <View style={styles.gearBadge}>
+            <Ionicons name="settings" size={19} color="#0A978E" />
+          </View>
+        </View>
 
         {loading ? (
           <View style={styles.centered}>
@@ -299,20 +304,44 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
+            <Card style={styles.commercialCard}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBubble}>
+                  <Ionicons name="business-outline" size={14} color="#159DA4" />
+                </View>
+                <Text style={styles.sectionTitle}>Perfil comercial</Text>
+              </View>
+
+              <View style={styles.commercialBody}>
+                <View style={styles.logoPreviewWrap}>
+                  {profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.logoPreview} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.logoFallback}>
+                      <Text style={styles.logoFallbackText}>Sin logo</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.commercialInfo}>
+                  <Text style={styles.commercialName}>{displayName}</Text>
+                  <Text style={styles.commercialEmail}>{displayEmail}</Text>
+                  <Text style={styles.commercialRole}>{sanitizeText(roleName, { maxLength: 60, fallback: 'Usuario' })}</Text>
+                  {hasValidAddress ? <Text style={styles.validInfoText}>Dirección validada</Text> : null}
+                </View>
+              </View>
+            </Card>
+
             <Card style={styles.formCard}>
-              <View style={styles.row2}>
-                <View style={styles.col}>
-                  <Text style={styles.label}>Nombre *</Text>
-                  <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder="Nombre" />
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBubble}>
+                  <Ionicons name="person-outline" size={14} color="#159DA4" />
                 </View>
-                <View style={styles.col}>
-                  <Text style={styles.label}>Apellidos</Text>
-                  <TextInput style={styles.input} value={lastName} onChangeText={setLastName} placeholder="Apellidos" />
-                </View>
+                <Text style={styles.sectionTitle}>Datos personales</Text>
               </View>
 
               <View style={styles.row2}>
-                <View style={styles.col}>
+                <View style={[styles.col, styles.colEmail]}>
                   <Text style={styles.label}>E-mail *</Text>
                   <TextInput
                     style={styles.input}
@@ -323,43 +352,40 @@ export default function ProfileScreen() {
                     keyboardType="email-address"
                   />
                 </View>
-                <View style={styles.col}>
-                  <Text style={styles.label}>Teléfono</Text>
-                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Teléfono" />
+                <View style={[styles.col, styles.colWhatsapp]}>
+                  <Text style={styles.label}>Whatsapp</Text>
+                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Whatsapp" />
                 </View>
               </View>
 
               <View style={styles.row2}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Teléfono fijo</Text>
-                  <TextInput style={styles.input} value={landlinePhone} onChangeText={setLandlinePhone} placeholder="Opcional" />
-                </View>
-                <View style={styles.col}>
                   <Text style={styles.label}>Documento</Text>
                   <View style={styles.row2Compact}>
-                    <TextInput style={[styles.input, styles.compactInput]} value={docType} onChangeText={setDocType} placeholder="Tipo" />
-                    <TextInput style={[styles.input, styles.compactInput]} value={docNumber} onChangeText={setDocNumber} placeholder="Número" />
+                    <View style={[styles.input, styles.pickerWrap, styles.docTypeInput]}>
+                      <Pressable style={styles.docTypeTrigger} onPress={() => setDocTypeModalVisible(true)}>
+                        <Text style={styles.docTypeTriggerText}>{selectedDocLabel}</Text>
+                        <Ionicons name="chevron-down" size={16} color="#6B7F9B" />
+                      </Pressable>
+                    </View>
+                    <TextInput style={[styles.input, styles.docNumberInput]} value={docNumber} onChangeText={setDocNumber} placeholder="Número" />
                   </View>
                 </View>
+                <View style={styles.col} />
               </View>
 
               <Text style={styles.label}>Dirección</Text>
               <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Dirección completa" />
               <Text style={styles.helperText}>Opcional. Si no seleccionas una dirección validada, no aparecerás en el mapa.</Text>
-              {hasValidAddress ? (
-                <View style={styles.validBadge}>
-                  <Text style={styles.validBadgeText}>Dirección validada</Text>
-                </View>
-              ) : null}
 
               <View style={styles.row2}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Razón social / Nombre de usuario</Text>
+                  <Text style={[styles.label, styles.alignedLabel]}>Razón social / Nombre de usuario</Text>
                   <TextInput style={[styles.input, styles.readOnlyInput]} value={username} editable={false} />
                   <Text style={styles.helperText}>Este valor es único y no se puede modificar.</Text>
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Nueva contraseña</Text>
+                  <Text style={[styles.label, styles.alignedLabel]}>Nueva contraseña</Text>
                   <TextInput
                     style={styles.input}
                     value={newPassword}
@@ -372,7 +398,10 @@ export default function ProfileScreen() {
 
               <Text style={styles.label}>Logo o foto (opcional)</Text>
               <TouchableOpacity style={styles.fileInput} onPress={onPickLogo}>
-                <Text style={styles.fileInputText}>{logoAsset?.fileName || 'Seleccionar archivo'}</Text>
+                <View style={styles.uploadRow}>
+                  <Ionicons name="cloud-upload-outline" size={16} color="#0D9BA5" />
+                  <Text style={styles.fileInputText}>{logoAsset?.fileName || 'Seleccionar archivo'}</Text>
+                </View>
               </TouchableOpacity>
               <Text style={styles.helperText}>Se recomienda formato cuadrado, máximo 2MB.</Text>
 
@@ -381,29 +410,60 @@ export default function ProfileScreen() {
               </View>
             </Card>
 
-            <Card style={styles.previewCard}>
-              <View style={styles.previewImageWrap}>
-                {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.previewImage} resizeMode="contain" />
-                ) : (
-                  <View style={styles.previewImageFallback}>
-                    <Text style={styles.previewImageFallbackText}>Sin imagen</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.previewName}>{displayName}</Text>
-              <Text style={styles.previewEmail}>{displayEmail}</Text>
-              <Text style={styles.previewRole}>{sanitizeText(roleName, { maxLength: 60, fallback: 'Usuario' })}</Text>
-
-              {hasValidAddress ? (
-                <View style={styles.validCard}>
-                  <Text style={styles.validCardTitle}>Dirección validada</Text>
-                  <Text style={styles.validCardText}>Usa el autocompletado para mejorar la visibilidad en el mapa.</Text>
-                </View>
-              ) : null}
-            </Card>
-
             <Button label="Cerrar sesión" onPress={logout} variant="danger" />
+
+            <Modal
+              visible={docTypeModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setDocTypeModalVisible(false)}
+            >
+              <View style={styles.modalBackdrop}>
+                <View style={styles.modalCard}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Tipo de documento</Text>
+                    <Pressable style={styles.modalCloseBtn} onPress={() => setDocTypeModalVisible(false)}>
+                      <Ionicons name="close" size={18} color="#7387A4" />
+                    </Pressable>
+                  </View>
+
+                  <Pressable
+                    style={[styles.modalOption, docType === '' && styles.modalOptionActive]}
+                    onPress={() => {
+                      setDocType('');
+                      setDocTypeModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.modalOptionLeft}>
+                      <View style={styles.modalOptionIconWrap}>
+                        <Ionicons name="ellipsis-horizontal" size={14} color="#149DAA" />
+                      </View>
+                      <Text style={styles.modalOptionText}>...</Text>
+                    </View>
+                    <Ionicons name={docType === '' ? 'checkmark' : 'chevron-forward'} size={18} color={docType === '' ? '#149DAA' : '#6E819C'} />
+                  </Pressable>
+
+                  {DOCUMENT_TYPE_OPTIONS.map((item) => (
+                    <Pressable
+                      key={item.value}
+                      style={[styles.modalOption, docType === item.value && styles.modalOptionActive]}
+                      onPress={() => {
+                        setDocType(item.value);
+                        setDocTypeModalVisible(false);
+                      }}
+                    >
+                      <View style={styles.modalOptionLeft}>
+                        <View style={styles.modalOptionIconWrap}>
+                          <Ionicons name="id-card-outline" size={14} color="#149DAA" />
+                        </View>
+                        <Text style={styles.modalOptionText}>{item.label}</Text>
+                      </View>
+                      <Ionicons name={docType === item.value ? 'checkmark' : 'chevron-forward'} size={18} color={docType === item.value ? '#149DAA' : '#6E819C'} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </Modal>
           </>
         )}
       </ScrollView>
@@ -420,15 +480,30 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxxl,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
   title: {
-    color: '#071B3E',
     ...typography.h1,
+    color: '#071B3E',
   },
   subtitle: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
+    marginTop: spacing.xxs,
     color: '#4D607A',
     ...typography.body,
+  },
+  gearBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#F7FBFF',
+    borderWidth: 1,
+    borderColor: '#D7E1ED',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centered: {
     paddingTop: spacing.xl,
@@ -437,8 +512,8 @@ const styles = StyleSheet.create({
   },
   note: {
     marginTop: spacing.sm,
-    color: colors.textMuted,
     ...typography.body,
+    color: colors.textMuted,
   },
   errorCard: {
     backgroundColor: colors.dangerSoft,
@@ -449,14 +524,87 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   errorTitle: {
-    color: colors.danger,
     ...typography.h3,
+    color: colors.danger,
   },
   errorText: {
     marginTop: spacing.xs,
-    color: colors.danger,
     ...typography.caption,
+    color: colors.danger,
     lineHeight: 18,
+  },
+  commercialCard: {
+    marginBottom: spacing.md,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C8D4E3',
+    backgroundColor: '#F4F7FB',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  sectionIconBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E6F6F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: '#1B355A',
+  },
+  commercialBody: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  logoPreviewWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D1DDEA',
+    overflow: 'hidden',
+    backgroundColor: '#EEF3F8',
+  },
+  logoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  logoFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoFallbackText: {
+    ...typography.caption,
+    color: '#7890AF',
+  },
+  commercialInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  commercialName: {
+    ...typography.h3,
+    color: '#0D2346',
+  },
+  commercialEmail: {
+    ...typography.body,
+    color: '#4D6383',
+  },
+  commercialRole: {
+    ...typography.captionStrong,
+    color: '#2B476E',
+  },
+  validInfoText: {
+    ...typography.captionStrong,
+    color: '#0A978E',
+    marginTop: spacing.xxs,
   },
   formCard: {
     marginBottom: spacing.md,
@@ -471,16 +619,26 @@ const styles = StyleSheet.create({
   },
   row2Compact: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: spacing.xs,
   },
   col: {
     flex: 1,
+  },
+  colEmail: {
+    flex: 1.55,
+  },
+  colWhatsapp: {
+    flex: 0.95,
   },
   label: {
     ...typography.captionStrong,
     color: '#11284B',
     marginBottom: spacing.xxs,
     marginTop: spacing.sm,
+  },
+  alignedLabel: {
+    minHeight: 34,
   },
   input: {
     borderWidth: 1,
@@ -489,11 +647,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF3F8',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    minHeight: 52,
     color: '#0D2245',
     ...typography.body,
   },
-  compactInput: {
-    flex: 1,
+  pickerWrap: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    minHeight: 52,
+    overflow: 'hidden',
+  },
+  docTypeInput: {
+    width: 132,
+    flexShrink: 0,
+  },
+  docNumberInput: {
+    width: 170,
+    flexShrink: 0,
+  },
+  docTypeTrigger: {
+    minHeight: 52,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  docTypeTriggerText: {
+    ...typography.body,
+    color: '#0D2245',
   },
   readOnlyInput: {
     color: '#4F617C',
@@ -504,20 +686,6 @@ const styles = StyleSheet.create({
     color: '#617694',
     marginTop: spacing.xxs,
   },
-  validBadge: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#63D5B2',
-    backgroundColor: '#D9F6EA',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-  },
-  validBadgeText: {
-    ...typography.captionStrong,
-    color: '#087D58',
-  },
   fileInput: {
     marginTop: spacing.xxs,
     borderWidth: 1,
@@ -526,6 +694,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF3F8',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  uploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   fileInputText: {
     ...typography.body,
@@ -533,71 +708,72 @@ const styles = StyleSheet.create({
   },
   saveWrap: {
     marginTop: spacing.md,
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
   },
-  previewCard: {
-    marginBottom: spacing.md,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#C8D4E3',
-    backgroundColor: '#F4F7FB',
-  },
-  previewImageWrap: {
-    borderWidth: 1,
-    borderColor: '#D1DDEA',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    minHeight: 170,
-    alignItems: 'center',
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(11, 25, 45, 0.35)',
     justifyContent: 'center',
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-    backgroundColor: '#EEF3F8',
-  },
-  previewImage: {
-    width: '100%',
-    height: 150,
-  },
-  previewImageFallback: {
-    width: '100%',
-    minHeight: 170,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewImageFallbackText: {
-    ...typography.captionStrong,
-    color: '#7890AF',
-  },
-  previewName: {
-    ...typography.h3,
-    color: '#0D2346',
-    marginBottom: spacing.xxs,
-  },
-  previewEmail: {
-    ...typography.body,
-    color: '#4D6383',
-    marginBottom: spacing.sm,
-  },
-  previewRole: {
-    ...typography.captionStrong,
-    color: '#2B476E',
-    marginBottom: spacing.sm,
-  },
-  validCard: {
-    borderWidth: 1,
-    borderColor: '#9ED9D1',
-    borderRadius: 12,
-    backgroundColor: '#DDF2F2',
     padding: spacing.md,
   },
-  validCardTitle: {
-    ...typography.h3,
-    color: '#0C6E73',
-    marginBottom: spacing.xxs,
+  modalCard: {
+    backgroundColor: '#F5F8FC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D6E1EE',
+    padding: spacing.md,
+    gap: spacing.sm,
   },
-  validCardText: {
-    ...typography.body,
-    color: '#1A5F67',
-    lineHeight: 20,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  modalTitle: {
+    ...typography.h2,
+    color: '#152F56',
+  },
+  modalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF3F9',
+    borderWidth: 1,
+    borderColor: '#D4DFEC',
+  },
+  modalOption: {
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D7E2EE',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalOptionActive: {
+    backgroundColor: '#EAF7F9',
+    borderColor: '#BFE3E8',
+  },
+  modalOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  modalOptionIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E6F6F8',
+  },
+  modalOptionText: {
+    ...typography.bodyStrong,
+    color: '#1C355B',
   },
 });
