@@ -5,13 +5,18 @@ import {
   StyleSheet,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button as UiButton, Card as UiCard, InputField as UiInputField, colors, spacing, typography } from '../components/ui';
 import { useAuthStore } from '../store/useAuthStore';
-import { getApiErrorDetails, loginApi } from '../api/client';
+import { getApiErrorDetails, LEGAL_URLS, loginApi } from '../api/client';
+
+const FORGOT_PASSWORD_ROUTE = '/forgot-password';
+const RESET_PASSWORD_ROUTE = '/reset-password';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,6 +24,19 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setToken, setUser } = useAuthStore();
+
+  const openLegalLink = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert('Enlace no disponible', 'No se pudo abrir el enlace legal.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (_error) {
+      Alert.alert('Error', 'No se pudo abrir el enlace legal.');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -81,7 +99,7 @@ export default function LoginScreen() {
           />
 
           <UiInputField
-            label="Contrasena"
+            label="Contraseña"
             value={password}
             onChangeText={setPassword}
             placeholder="********"
@@ -92,6 +110,38 @@ export default function LoginScreen() {
           />
 
           <UiButton label="Ingresar" onPress={handleLogin} loading={loading} style={styles.loginButton} />
+          <UiButton
+            label="Olvidé mi contraseña"
+            variant="secondary"
+            onPress={() => router.push(FORGOT_PASSWORD_ROUTE)}
+            disabled={loading}
+            style={styles.secondaryButton}
+          />
+          <UiButton
+            label="Ya tengo token para restablecer"
+            variant="secondary"
+            onPress={() => router.push(RESET_PASSWORD_ROUTE)}
+            disabled={loading}
+            style={styles.secondaryButton}
+          />
+          <UiButton
+            label="Crear cuenta de proveedor"
+            variant="secondary"
+            onPress={() => router.push('/register')}
+            disabled={loading}
+          />
+
+          <View style={styles.legalWrap}>
+            <Pressable onPress={() => openLegalLink(LEGAL_URLS.privacy)}>
+              <Text style={styles.legalLink}>Política de privacidad</Text>
+            </Pressable>
+            <Pressable onPress={() => openLegalLink(LEGAL_URLS.terms)}>
+              <Text style={styles.legalLink}>Términos y condiciones</Text>
+            </Pressable>
+            <Pressable onPress={() => openLegalLink(LEGAL_URLS.accountDeletion)}>
+              <Text style={styles.legalLink}>Eliminación de cuenta</Text>
+            </Pressable>
+          </View>
         </UiCard>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -127,5 +177,19 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  secondaryButton: {
+    marginBottom: spacing.sm,
+  },
+  legalWrap: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  legalLink: {
+    ...typography.caption,
+    color: colors.accent,
+    textDecorationLine: 'underline',
   },
 });

@@ -3,8 +3,15 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { mapProviderMetricsResponse } from '../utils/providerMetrics';
+import {
+  API_BASE_CANDIDATES,
+  DEFAULT_API_BASE_URL,
+  LEGAL_URLS,
+  WEB_API_OVERRIDE_KEY,
+  normalizeApiBaseUrl,
+} from '../config/network';
 
-const WEB_API_OVERRIDE_KEY = 'kconecta_api_base_url';
+export { LEGAL_URLS };
 
 const getWebApiOverride = () => {
   if (Platform.OS !== 'web' || typeof localStorage === 'undefined') {
@@ -16,12 +23,12 @@ const getWebApiOverride = () => {
     return null;
   }
 
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+  const trimmed = normalizeApiBaseUrl(value);
+  if (!trimmed || (!trimmed.startsWith('http://') && !trimmed.startsWith('https://'))) {
     return null;
   }
 
-  return trimmed.replace(/\/+$/, '');
+  return trimmed;
 };
 
 const setWebApiOverride = (url) => {
@@ -33,21 +40,19 @@ const setWebApiOverride = (url) => {
     return;
   }
 
-  localStorage.setItem(WEB_API_OVERRIDE_KEY, url.replace(/\/+$/, ''));
+  const normalized = normalizeApiBaseUrl(url);
+  if (!normalized) {
+    return;
+  }
+
+  localStorage.setItem(WEB_API_OVERRIDE_KEY, normalized);
 };
 
 const unique = (values) => [...new Set(values.filter(Boolean))];
 
-const API_BASE_CANDIDATES = unique([
-  getWebApiOverride(),
-  process.env.EXPO_PUBLIC_API_BASE_URL,
-  // Preferimos www (objetivo final), con fallback por si hay SSL/cert en cliente.
-  'https://www.kconecta.com/api',
-  'https://kconecta.com/api',
-  'https://api.kconecta.com/api',
-]);
+const RESOLVED_API_BASE_CANDIDATES = unique([getWebApiOverride(), ...API_BASE_CANDIDATES]);
 
-let activeBaseUrl = API_BASE_CANDIDATES[0] || 'https://www.kconecta.com/api';
+let activeBaseUrl = RESOLVED_API_BASE_CANDIDATES[0] || DEFAULT_API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL: activeBaseUrl,
@@ -68,7 +73,7 @@ const isRetryableNetworkError = (error) => {
 };
 
 const withBaseUrlFallback = async (requestFn) => {
-  const orderedCandidates = unique([activeBaseUrl, ...API_BASE_CANDIDATES]);
+  const orderedCandidates = unique([activeBaseUrl, ...RESOLVED_API_BASE_CANDIDATES]);
   let lastError = null;
 
   for (let index = 0; index < orderedCandidates.length; index += 1) {
@@ -699,4 +704,43 @@ export const registerContactClickApi = async ({
     ],
     payload
   );
+};
+
+export const forgotPasswordApi = async (email) => {
+  const payload = { email: String(email ?? '').trim() };
+  const response = await withBaseUrlFallback(() => apiClient.post('/forgot-password', payload));
+  return response.data;
+};
+
+export const resetPasswordApi = async (payload = {}) => {
+  const response = await withBaseUrlFallback(() => apiClient.post('/reset-password', payload));
+  return response.data;
+};
+
+const shouldFallbackToDeleteAlias = (error) => {
+  const status = error?.response?.status ?? null;
+  if ([404, 405, 500, 501].includes(status)) {
+    return true;
+  }
+
+  const message = String(error?.response?.data?.message ?? error?.message ?? '').toLowerCase();
+  return message.includes('method not allowed') || message.includes('unsupported');
+};
+
+export const deleteMyAccountApi = async (payload = {}) => {
+  try {
+    const response = await withBaseUrlFallback(() =>
+      apiClient.delete('/me', { data: payload })
+    );
+    return response.data;
+  } catch (error) {
+    if (!shouldFallbackToDeleteAlias(error)) {
+      throw error;
+    }
+
+    const response = await withBaseUrlFallback(() =>
+      apiClient.post('/account/delete', payload)
+    );
+    return response.data;
+  }
 };
