@@ -618,30 +618,8 @@ export const generateServiceWorkCodeApi = async () => {
 };
 
 export const getProviderMetricsApi = async () => {
-  const candidates = [
-    '/agent/services/metrics',
-    '/agent/provider/metrics',
-    '/agent/services/profile',
-    '/me',
-  ];
-  let lastError = null;
-
-  for (let index = 0; index < candidates.length; index += 1) {
-    const endpoint = candidates[index];
-    try {
-      const response = await withBaseUrlFallback(() => apiClient.get(endpoint));
-      return mapProviderMetricsResponse(response.data);
-    } catch (error) {
-      lastError = error;
-      const status = error?.response?.status ?? null;
-      const hasNext = index < candidates.length - 1;
-      if (hasNext && shouldTryNextEndpoint(status)) continue;
-      if (hasNext && (status === 422 || status === 500)) continue;
-      throw error;
-    }
-  }
-
-  throw lastError;
+  const response = await withBaseUrlFallback(() => apiClient.get('/agent/services/profile'));
+  return mapProviderMetricsResponse(response.data);
 };
 
 const postTrackingEvent = async (candidates, payload) => {
@@ -684,10 +662,9 @@ export const registerServiceVisitApi = async ({
 
   return postTrackingEvent(
     [
+      '/service_stats/register_visit',
       '/agent/services/register-visit',
       '/agent/services/register_visit',
-      '/agent/services/metrics/register-visit',
-      '/agent/services/metrics/register_visit',
     ],
     payload
   );
@@ -716,10 +693,9 @@ export const registerContactClickApi = async ({
 
   return postTrackingEvent(
     [
+      '/service_stats/register_contact_click',
       '/agent/services/register-contact-click',
       '/agent/services/register_contact_click',
-      '/agent/services/metrics/register-contact-click',
-      '/agent/services/metrics/register_contact_click',
     ],
     payload
   );

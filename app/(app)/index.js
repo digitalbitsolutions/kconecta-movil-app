@@ -109,6 +109,82 @@ const parseReviews = (obj) => {
   return count !== null ? Math.trunc(count) : null;
 };
 
+const sumMetricFromServices = (services, keys) => {
+  if (!Array.isArray(services) || !services.length) return 0;
+  return services.reduce((acc, service) => {
+    const value = keys.reduce((found, key) => (found !== null ? found : toNum(service?.[key])), null);
+    return acc + (value && value > 0 ? value : 0);
+  }, 0);
+};
+
+const firstMetricFromObject = (source, keys) => {
+  if (!source || typeof source !== 'object') return 0;
+  for (let i = 0; i < keys.length; i += 1) {
+    const value = toNum(source[keys[i]]);
+    if (value && value > 0) return value;
+  }
+  return 0;
+};
+
+const resolveProviderMetrics = ({ apiMetrics, profile, services }) => {
+  const apiVisits = toNum(apiMetrics?.visits) || 0;
+  const apiClicks = toNum(apiMetrics?.clicks) || 0;
+  const apiTickets = toNum(apiMetrics?.tickets) || 0;
+
+  const profileVisits = firstMetricFromObject(profile, [
+    'visits',
+    'visits_count',
+    'profile_visits',
+    'profile_views',
+    'views',
+    'views_count',
+  ]);
+  const profileClicks = firstMetricFromObject(profile, [
+    'clicks',
+    'clicks_count',
+    'contact_clicks',
+    'contacts_count',
+    'whatsapp_clicks',
+    'phone_clicks',
+  ]);
+  const profileTickets = firstMetricFromObject(profile, [
+    'tickets',
+    'tickets_count',
+    'service_tickets',
+    'work_codes_count',
+    'codes_count',
+  ]);
+
+  const servicesVisits = sumMetricFromServices(services, [
+    'visits',
+    'visits_count',
+    'profile_views',
+    'views',
+    'views_count',
+  ]);
+  const servicesClicks = sumMetricFromServices(services, [
+    'clicks',
+    'clicks_count',
+    'contact_clicks',
+    'contacts_count',
+    'whatsapp_clicks',
+    'phone_clicks',
+  ]);
+  const servicesTickets = sumMetricFromServices(services, [
+    'tickets',
+    'tickets_count',
+    'service_tickets',
+    'work_codes_count',
+    'codes_count',
+  ]);
+
+  return {
+    visits: Math.trunc(apiVisits || profileVisits || servicesVisits || 0),
+    clicks: Math.trunc(apiClicks || profileClicks || servicesClicks || 0),
+    tickets: Math.trunc(apiTickets || profileTickets || servicesTickets || 0),
+  };
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, setUser } = useAuthStore();
@@ -166,7 +242,11 @@ export default function DashboardScreen() {
     const reviews = parseReviews(profile) ?? parseReviews(effectiveUser);
     setProviderRating(rating);
     setProviderReviewsCount(reviews);
-    const metrics = metricsResult?.metrics || { visits: 0, clicks: 0, tickets: 0 };
+    const metrics = resolveProviderMetrics({
+      apiMetrics: metricsResult?.metrics || { visits: 0, clicks: 0, tickets: 0 },
+      profile,
+      services: list,
+    });
     setProviderMetrics({
       visits: Number.isFinite(metrics?.visits) ? metrics.visits : 0,
       clicks: Number.isFinite(metrics?.clicks) ? metrics.clicks : 0,
@@ -177,17 +257,23 @@ export default function DashboardScreen() {
   const fetchDashboardData = async () => {
     const endpointErrors = [];
     let effectiveUser = user;
+    const isProviderSession = providerView || isServiceProviderUser(effectiveUser);
+    const hasSessionUser = Boolean(effectiveUser?.id);
 
-    try {
-      const meData = await getMeApi();
-      const extractedUser = extractUser(meData);
-      if (extractedUser) {
-        const merged = { ...(meData?.data || {}), ...extractedUser };
-        setUser(merged);
-        effectiveUser = merged;
+    // Avoid /me call for provider dashboard and while auth store is still hydrating.
+    // In both cases, /me is not required to render provider metrics UI.
+    if (!isProviderSession && hasSessionUser) {
+      try {
+        const meData = await getMeApi();
+        const extractedUser = extractUser(meData);
+        if (extractedUser) {
+          const merged = { ...(meData?.data || {}), ...extractedUser };
+          setUser(merged);
+          effectiveUser = merged;
+        }
+      } catch (error) {
+        endpointErrors.push(`/me -> ${getApiErrorDetails(error).message}`);
       }
-    } catch (error) {
-      endpointErrors.push(`/me -> ${getApiErrorDetails(error).message}`);
     }
 
     try {

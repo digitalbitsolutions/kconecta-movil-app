@@ -73,7 +73,9 @@
     - payload inválido sin crash
 
 ## 5) Evidencia
-- Pendiente adjuntar capturas/video de flujo E2E:
+- Evidencia funcional validada en emulador Android:
+  - dashboard proveedor renderiza KPIs reales (visitas/clicks/tickets = `1/1/1`) tras ajustes de contrato y mapper.
+- Pendiente adjuntar flujo completo E2E en PR final:
   - dashboard antes
   - visita detalle
   - click contacto

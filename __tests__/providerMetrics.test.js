@@ -29,10 +29,37 @@ describe('providerMetrics mapper', () => {
     expect(result).toEqual({ visits: 0, clicks: 0, tickets: 0 });
   });
 
+  test('maps deep nested metrics shape', () => {
+    const result = mapProviderMetricsResponse({
+      success: true,
+      data: {
+        profile: {
+          metrics: {
+            profile_visits_count: 1,
+            contact_click_count: 1,
+            service_tickets_count: 1,
+          },
+        },
+      },
+    });
+    expect(result).toEqual({ visits: 1, clicks: 1, tickets: 1 });
+  });
+
+  test('prefers nested positive value over top-level zero', () => {
+    const result = mapProviderMetricsResponse({
+      data: {
+        clicks_count: 0,
+        stats: {
+          contact_clicks_count: 2,
+        },
+      },
+    });
+    expect(result).toEqual({ visits: 0, clicks: 2, tickets: 0 });
+  });
+
   test('does not crash on invalid payload', () => {
     expect(mapProviderMetricsResponse(null)).toEqual({ visits: 0, clicks: 0, tickets: 0 });
     expect(mapProviderMetricsResponse(undefined)).toEqual({ visits: 0, clicks: 0, tickets: 0 });
     expect(mapProviderMetricsResponse('bad')).toEqual({ visits: 0, clicks: 0, tickets: 0 });
   });
 });
-
