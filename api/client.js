@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
+import { mapProviderMetricsResponse } from '../utils/providerMetrics';
 
 const WEB_API_OVERRIDE_KEY = 'kconecta_api_base_url';
 
@@ -614,4 +615,112 @@ export const generateServiceWorkCodeApi = async () => {
   }
 
   throw lastError;
+};
+
+export const getProviderMetricsApi = async () => {
+  const candidates = [
+    '/agent/services/metrics',
+    '/agent/provider/metrics',
+    '/agent/services/profile',
+    '/me',
+  ];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.get(endpoint));
+      return mapProviderMetricsResponse(response.data);
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && shouldTryNextEndpoint(status)) continue;
+      if (hasNext && (status === 422 || status === 500)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+const postTrackingEvent = async (candidates, payload) => {
+  let lastError = null;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
+      return response.data || {};
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && (shouldTryNextEndpoint(status) || status === 422 || status === 500)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const registerServiceVisitApi = async ({
+  serviceId,
+  providerUserId,
+  source = 'mobile_app',
+  eventId = null,
+  idempotencyKey = null,
+} = {}) => {
+  const safeServiceId = Number.parseInt(String(serviceId ?? ''), 10);
+  const safeProviderUserId = Number.parseInt(String(providerUserId ?? ''), 10);
+  if (!safeServiceId || !safeProviderUserId) return { skipped: true };
+
+  const payload = {
+    service_id: safeServiceId,
+    provider_user_id: safeProviderUserId,
+    source,
+    event_id: eventId,
+    idempotency_key: idempotencyKey,
+  };
+
+  return postTrackingEvent(
+    [
+      '/agent/services/register-visit',
+      '/agent/services/register_visit',
+      '/agent/services/metrics/register-visit',
+      '/agent/services/metrics/register_visit',
+    ],
+    payload
+  );
+};
+
+export const registerContactClickApi = async ({
+  serviceId,
+  providerUserId,
+  channel = 'whatsapp',
+  source = 'mobile_app',
+  eventId = null,
+  idempotencyKey = null,
+} = {}) => {
+  const safeServiceId = Number.parseInt(String(serviceId ?? ''), 10);
+  const safeProviderUserId = Number.parseInt(String(providerUserId ?? ''), 10);
+  if (!safeServiceId || !safeProviderUserId) return { skipped: true };
+
+  const payload = {
+    service_id: safeServiceId,
+    provider_user_id: safeProviderUserId,
+    channel,
+    source,
+    event_id: eventId,
+    idempotency_key: idempotencyKey,
+  };
+
+  return postTrackingEvent(
+    [
+      '/agent/services/register-contact-click',
+      '/agent/services/register_contact_click',
+      '/agent/services/metrics/register-contact-click',
+      '/agent/services/metrics/register_contact_click',
+    ],
+    payload
+  );
 };

@@ -1,8 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getApiErrorDetails, getMeApi, getPropertyByIdApi } from '../../../api/client';
+import {
+  getApiErrorDetails,
+  getMeApi,
+  getPropertyByIdApi,
+} from '../../../api/client';
+import { trackContactClickSafe, trackServiceVisitSafe } from '../../../services/providerMetricsService';
 import {
   ApartmentDetailView,
   GarageDetailView,
@@ -42,6 +47,7 @@ export default function PropertyDetailScreen() {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState('');
+  const visitTrackedRef = useRef(false);
 
   useEffect(() => {
     const load = async () => {
@@ -104,6 +110,32 @@ export default function PropertyDetailScreen() {
 
   const detailVariant = useMemo(() => getPropertyDetailVariant(property), [property]);
   const activeDetail = detailVariant?.detail;
+  const trackingContext = useMemo(() => {
+    const serviceId = Number.parseInt(
+      String(property?.service_id ?? property?.id_service ?? property?.service?.id ?? property?.id ?? ''),
+      10
+    );
+    const providerUserId = Number.parseInt(
+      String(property?.provider_user_id ?? property?.user_id ?? property?.user?.id ?? ''),
+      10
+    );
+    if (!serviceId || !providerUserId) return null;
+    return { serviceId, providerUserId };
+  }, [property]);
+
+  useEffect(() => {
+    if (!trackingContext || visitTrackedRef.current) return;
+    visitTrackedRef.current = true;
+    trackServiceVisitSafe({
+      serviceId: trackingContext.serviceId,
+      providerUserId: trackingContext.providerUserId,
+      source: 'mobile_property_detail',
+    }).then((result) => {
+      if (result?.ok === false) {
+        console.warn('registerServiceVisit failed:', result.error);
+      }
+    });
+  }, [trackingContext]);
 
   const openExternalUrl = async (url, title) => {
     if (!url) return;
@@ -134,7 +166,25 @@ export default function PropertyDetailScreen() {
         onOpenPage: () => openExternalUrl(activeDetail.pageUrl, 'Sitio web'),
         onOpenVideo: () => openExternalUrl(activeDetail.videoUrl, 'Video'),
         onCall: () => openExternalUrl(activeDetail.contact?.phoneUrl, 'Llamar'),
-        onMessage: () => openExternalUrl(activeDetail.contact?.emailUrl, 'Enviar mensaje'),
+        onMessage: async () => {
+          const targetUrl = activeDetail.contact?.whatsappUrl || activeDetail.contact?.emailUrl;
+          if (!targetUrl) return;
+
+          if (trackingContext) {
+            trackContactClickSafe({
+              serviceId: trackingContext.serviceId,
+              providerUserId: trackingContext.providerUserId,
+              channel: activeDetail.contact?.whatsappUrl ? 'whatsapp' : 'email',
+              source: 'mobile_property_detail',
+            }).then((result) => {
+              if (result?.ok === false) {
+                console.warn('registerContactClick failed:', result.error);
+              }
+            });
+          }
+
+          await openExternalUrl(targetUrl, activeDetail.contact?.whatsappUrl ? 'WhatsApp' : 'Enviar mensaje');
+        },
         onShare: handleShare,
       }
     : null;

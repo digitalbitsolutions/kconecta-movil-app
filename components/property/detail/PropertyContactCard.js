@@ -18,7 +18,7 @@ export default function PropertyContactCard({ contact, onCall, onMessage, onShar
 
   return (
     <Card>
-      <SectionHeader title="Contacto" subtitle="Pregunta al anunciante" />
+      <SectionHeader title="Contacto" subtitle="Informacion del anunciante" />
 
       <View style={styles.profileRow}>
         {contact.avatarUrl ? (
@@ -51,7 +51,12 @@ export default function PropertyContactCard({ contact, onCall, onMessage, onShar
 
       <View style={styles.actions}>
         <Button label="Llamar" onPress={onCall} disabled={!onCall} />
-        <Button label="Enviar mensaje" variant="secondary" onPress={onMessage} disabled={!onMessage} />
+        <Button
+          label={contact?.whatsappUrl ? 'WhatsApp' : 'Enviar email'}
+          variant="secondary"
+          onPress={onMessage}
+          disabled={!onMessage}
+        />
         {contact.hasShare ? <Button label="Compartir" variant="secondary" onPress={onShare} /> : null}
       </View>
     </Card>
