@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Button as UiButton, Card as UiCard, InputField as UiInputField, colors, spacing, typography } from '../components/ui';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { Card as UiCard, InputField as UiInputField, colors, spacing, typography } from '../components/ui';
 import { useAuthStore } from '../store/useAuthStore';
-import { getApiErrorDetails, LEGAL_URLS, loginApi } from '../api/client';
+import { getApiErrorDetails, loginApi } from '../api/client';
 
 const FORGOT_PASSWORD_ROUTE = '/forgot-password';
 const RESET_PASSWORD_ROUTE = '/reset-password';
@@ -25,22 +27,13 @@ export default function LoginScreen() {
   const router = useRouter();
   const { setToken, setUser } = useAuthStore();
 
-  const openLegalLink = async (url) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        Alert.alert('Enlace no disponible', 'No se pudo abrir el enlace legal.');
-        return;
-      }
-      await Linking.openURL(url);
-    } catch (_error) {
-      Alert.alert('Error', 'No se pudo abrir el enlace legal.');
-    }
+  const openLegalLink = (type) => {
+    router.push({ pathname: '/legal-viewer', params: { type } });
   };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor ingresa email y contrasena');
+      Alert.alert('Error', 'Por favor ingresa email y contraseña');
       return;
     }
 
@@ -57,15 +50,17 @@ export default function LoginScreen() {
         }
         router.replace('/(app)');
       } else {
-        Alert.alert('Error', 'Respuesta valida pero sin token de acceso.');
+        Alert.alert('Error', 'Respuesta válida pero sin token de acceso.');
       }
     } catch (e) {
       const details = getApiErrorDetails(e);
-      console.warn('Login failed:', details);
+      if (__DEV__) {
+        console.log('Login failed:', details);
+      }
 
       const backendHint =
         details.status >= 500
-          ? 'El backend CRM devolvio un error interno en /api/login. Revisa logs de Laravel para este intento.'
+          ? 'El backend CRM devolvió un error interno en /api/login. Revisa logs de Laravel para este intento.'
           : details.message;
       const requestIdText = details.requestId ? `\nRequest ID: ${details.requestId}` : '';
 
@@ -82,8 +77,11 @@ export default function LoginScreen() {
         style={styles.container}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>KConecta</Text>
-          <Text style={styles.headerSubtitle}>Accede a tu area de gestion inmobiliaria</Text>
+          <Image source={require('../assets/kconecta-logo.png')} style={styles.logo} resizeMode="contain" />
+          <View style={styles.badge}>
+            <Ionicons name="person-outline" size={13} color="#D8FFFA" />
+            <Text style={styles.badgeText}>PROVEEDORES</Text>
+          </View>
         </View>
 
         <UiCard style={styles.formCard}>
@@ -109,40 +107,63 @@ export default function LoginScreen() {
             textContentType="password"
           />
 
-          <UiButton label="Ingresar" onPress={handleLogin} loading={loading} style={styles.loginButton} />
-          <UiButton
-            label="Olvidé mi contraseña"
-            variant="secondary"
-            onPress={() => router.push(FORGOT_PASSWORD_ROUTE)}
-            disabled={loading}
-            style={styles.secondaryButton}
-          />
-          <UiButton
-            label="Ya tengo token para restablecer"
-            variant="secondary"
-            onPress={() => router.push(RESET_PASSWORD_ROUTE)}
-            disabled={loading}
-            style={styles.secondaryButton}
-          />
-          <UiButton
-            label="Crear cuenta de proveedor"
-            variant="secondary"
-            onPress={() => router.push('/register')}
-            disabled={loading}
-          />
+          <Pressable onPress={handleLogin} disabled={loading} style={styles.loginButton}>
+            <LinearGradient colors={['#1EBAB2', '#0EA7AA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.loginGradient}>
+              <Ionicons name="log-in-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.loginButtonText}>{loading ? 'Ingresando...' : 'Ingresar'}</Text>
+              <View style={styles.loginIconSpacer} />
+            </LinearGradient>
+          </Pressable>
+
+          <View style={styles.optionsDividerWrap}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.optionsDividerText}>Otras opciones</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable onPress={() => router.push(FORGOT_PASSWORD_ROUTE)} disabled={loading} style={styles.optionRow}>
+            <Ionicons name="lock-closed-outline" size={20} color="#12B4AF" />
+            <Text style={styles.optionRowText}>Olvidé mi contraseña</Text>
+            <Ionicons name="chevron-forward" size={19} color="#153760" />
+          </Pressable>
+
+          <Pressable onPress={() => router.push(RESET_PASSWORD_ROUTE)} disabled={loading} style={styles.optionRow}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#12B4AF" />
+            <Text style={styles.optionRowText}>Ya tengo token para restablecer</Text>
+            <Ionicons name="chevron-forward" size={19} color="#153760" />
+          </Pressable>
+
+          <Pressable onPress={() => router.push('/register')} disabled={loading} style={[styles.optionRow, styles.optionRowOutline]}>
+            <Ionicons name="person-add-outline" size={20} color="#0DAAA8" />
+            <Text style={[styles.optionRowText, styles.optionRowPrimaryText]}>Crear cuenta de proveedor</Text>
+            <Ionicons name="chevron-forward" size={19} color="#0DAAA8" />
+          </Pressable>
 
           <View style={styles.legalWrap}>
-            <Pressable onPress={() => openLegalLink(LEGAL_URLS.privacy)}>
+            <Pressable onPress={() => openLegalLink('privacy')}>
               <Text style={styles.legalLink}>Política de privacidad</Text>
             </Pressable>
-            <Pressable onPress={() => openLegalLink(LEGAL_URLS.terms)}>
+            <Text style={styles.legalDot}>•</Text>
+            <Pressable onPress={() => openLegalLink('terms')}>
               <Text style={styles.legalLink}>Términos y condiciones</Text>
             </Pressable>
-            <Pressable onPress={() => openLegalLink(LEGAL_URLS.accountDeletion)}>
+            <Text style={styles.legalDot}>•</Text>
+            <Pressable onPress={() => openLegalLink('accountDeletion')}>
               <Text style={styles.legalLink}>Eliminación de cuenta</Text>
             </Pressable>
           </View>
         </UiCard>
+
+        <View style={styles.securityCard}>
+          <View style={styles.securityIconWrap}>
+            <Ionicons name="shield-checkmark" size={20} color="#64D6CF" />
+          </View>
+          <View style={styles.securityCopy}>
+            <Text style={styles.securityTitle}>Acceso seguro</Text>
+            <Text style={styles.securityText}>Tu información está protegida con los más altos estándares de seguridad.</Text>
+          </View>
+          <Ionicons name="lock-closed" size={28} color="#C2F0EC" />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -151,45 +172,152 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#EEF2F5',
   },
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xxxl,
+    marginBottom: spacing.md,
   },
-  headerTitle: {
-    ...typography.h1,
-    color: colors.primary,
+  logo: {
+    width: 110,
+    height: 120,
+    marginBottom: 2,
   },
-  headerSubtitle: {
-    marginTop: spacing.sm,
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  badge: {
+    minHeight: 24,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: '#1FB8B0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: spacing.xs,
+  },
+  badgeText: {
+    ...typography.captionStrong,
+    color: '#D8FFFA',
+    letterSpacing: 0.6,
   },
   formCard: {
-    marginBottom: 0,
+    marginBottom: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
   },
   loginButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
-  secondaryButton: {
+  loginGradient: {
+    minHeight: 50,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+  },
+  loginButtonText: {
+    ...typography.h3,
+    color: '#FFFFFF',
+  },
+  loginIconSpacer: {
+    width: 20,
+  },
+  optionsDividerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D9E0EA',
+  },
+  optionsDividerText: {
+    ...typography.captionStrong,
+    color: '#7A8CA3',
+  },
+  optionRow: {
+    minHeight: 50,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D5DFEA',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  optionRowText: {
+    ...typography.bodyStrong,
+    color: '#153760',
+    flex: 1,
+    marginLeft: spacing.sm,
+  },
+  optionRowOutline: {
+    borderColor: '#1AB8B0',
+    backgroundColor: '#F0FBFA',
+  },
+  optionRowPrimaryText: {
+    color: '#0DAAA8',
   },
   legalWrap: {
     marginTop: spacing.sm,
-    gap: spacing.xs,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#E3EAF2',
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   legalLink: {
     ...typography.caption,
-    color: colors.accent,
+    color: '#18AAA8',
     textDecorationLine: 'underline',
+  },
+  legalDot: {
+    marginHorizontal: spacing.xs,
+    color: '#7B8EA7',
+  },
+  securityCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8E7EE',
+    backgroundColor: '#E9F5F8',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  securityIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#D9F5F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  securityCopy: {
+    flex: 1,
+  },
+  securityTitle: {
+    ...typography.captionStrong,
+    color: '#244B6F',
+  },
+  securityText: {
+    ...typography.caption,
+    color: '#5D7896',
+    marginTop: 1,
   },
 });

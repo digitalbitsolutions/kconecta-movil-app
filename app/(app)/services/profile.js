@@ -549,13 +549,9 @@ export default function ServicesProfileScreen() {
               <Button label="Seleccionar video" variant="secondary" onPress={onPickVideo} />
             </Card>
 
-            <Card style={styles.card}>
-              <Text style={styles.label}>Ultima actualizacion</Text>
-              <Text style={styles.value}>{updatedAt}</Text>
-              <View style={styles.saveWrap}>
-                <Button label={saving ? 'Guardando...' : 'Guardar cambios'} onPress={onSave} disabled={saving} />
-              </View>
-            </Card>
+            <View style={styles.saveWrap}>
+              <Button label={saving ? 'Guardando...' : 'Guardar cambios'} onPress={onSave} disabled={saving} />
+            </View>
           </>
         )}
       </ScrollView>

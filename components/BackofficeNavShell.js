@@ -32,6 +32,7 @@ export default function BackofficeNavShell({ children }) {
   const isDesktop = width >= 960;
   const adminView = isAdminUser(user);
   const providerView = isServiceProviderUser(user);
+  const clientView = Number.parseInt(String(user?.user_level_id ?? user?.level_id ?? user?.role_id ?? ''), 10) === 6;
 
   const navItems = providerView
     ? [
@@ -41,7 +42,12 @@ export default function BackofficeNavShell({ children }) {
       ]
     : [
         { label: 'Dashboard', href: '/', icon: 'D', iconName: 'grid-outline' },
-        { label: adminView ? 'Propiedades' : 'Mis propiedades', href: '/properties', icon: 'I', iconName: 'home-outline' },
+        {
+          label: clientView ? 'Mis valoraciones' : adminView ? 'Propiedades' : 'Mis propiedades',
+          href: clientView ? '/ratings' : '/properties',
+          icon: 'I',
+          iconName: clientView ? 'star-outline' : 'home-outline',
+        },
         { label: 'Mi perfil', href: '/profile', icon: 'P', iconName: 'person-outline' },
       ];
 
@@ -56,7 +62,13 @@ export default function BackofficeNavShell({ children }) {
           <Text style={styles.brand}>KConecta</Text>
           <View style={styles.sidebarNav}>
             {navItems.map((item) => (
-              <NavButton key={item.href} active={isActivePath(pathname, item.href)} label={item.label} icon={item.icon} onPress={() => router.push(item.href)} />
+              <NavButton
+                key={`${item.href}-${item.label}`}
+                active={isActivePath(pathname, item.href)}
+                label={item.label}
+                icon={item.icon}
+                onPress={() => router.push(item.href)}
+              />
             ))}
           </View>
           <TouchableOpacity onPress={logout} style={styles.logoutButton}>
@@ -74,7 +86,7 @@ export default function BackofficeNavShell({ children }) {
       <View style={styles.mobileTabBar}>
         {navItems.map((item) => (
           <NavButton
-            key={item.href}
+            key={`${item.href}-${item.label}`}
             active={isActivePath(pathname, item.href)}
             label={item.label}
             icon={item.icon}

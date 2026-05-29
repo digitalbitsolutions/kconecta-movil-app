@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -21,7 +21,6 @@ import {
   getApiErrorDetails,
   getFriendlyApiMessage,
   getMeApi,
-  LEGAL_URLS,
   getServiceProfileApi,
   updateServiceProfileApi,
 } from '../../../api/client';
@@ -106,6 +105,7 @@ const resolveAssetSizeBytes = async (asset) => {
 };
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user, setUser, logout } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -285,19 +285,8 @@ export default function ProfileScreen() {
     }
   };
 
-  const openLegalLink = async (url) => {
-    const safeUrl = pick(url);
-    if (!safeUrl) return;
-    try {
-      const supported = await Linking.canOpenURL(safeUrl);
-      if (!supported) {
-        Alert.alert('Enlace no disponible', 'No se pudo abrir este enlace en tu dispositivo.');
-        return;
-      }
-      await Linking.openURL(safeUrl);
-    } catch (_error) {
-      Alert.alert('Error', 'No se pudo abrir el enlace legal.');
-    }
+  const openLegalLink = (type) => {
+    router.push({ pathname: '/legal-viewer', params: { type } });
   };
 
   const openDeleteAccountModal = () => {
@@ -406,9 +395,9 @@ export default function ProfileScreen() {
             <Card style={styles.commercialCard}>
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionIconBubble}>
-                  <Ionicons name="business-outline" size={14} color="#159DA4" />
+                  <Ionicons name="person-outline" size={14} color="#159DA4" />
                 </View>
-                <Text style={styles.sectionTitle}>Perfil comercial</Text>
+                <Text style={styles.sectionTitle}>Perfil personal</Text>
               </View>
 
               <View style={styles.commercialBody}>
@@ -425,9 +414,12 @@ export default function ProfileScreen() {
                 <View style={styles.commercialInfo}>
                   <Text style={styles.commercialName}>{displayName}</Text>
                   <Text style={styles.commercialEmail}>{displayEmail}</Text>
-                  <Text style={styles.commercialRole}>{sanitizeText(roleName, { maxLength: 60, fallback: 'Usuario' })}</Text>
+                  <View style={styles.rolePill}>
+                    <Text style={styles.rolePillText}>{sanitizeText(roleName, { maxLength: 60, fallback: 'Usuario' })}</Text>
+                  </View>
                   {hasValidAddress ? <Text style={styles.validInfoText}>Dirección validada</Text> : null}
                 </View>
+                <Ionicons name="chevron-forward" size={18} color="#7A8CA6" />
               </View>
             </Card>
 
@@ -475,8 +467,6 @@ export default function ProfileScreen() {
 
               <Text style={styles.label}>Dirección</Text>
               <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Dirección completa" />
-              <Text style={styles.helperText}>Opcional. Si no seleccionas una dirección validada, no aparecerás en el mapa.</Text>
-
               <View style={styles.row2}>
                 <View style={styles.col}>
                   <Text style={[styles.label, styles.alignedLabel]}>Razón social / Nombre de usuario</Text>
@@ -508,20 +498,42 @@ export default function ProfileScreen() {
                 <Button label={saving ? 'Guardando...' : 'Guardar cambios'} onPress={onSave} disabled={saving} />
               </View>
             </Card>
-
             <Card style={styles.legalCard}>
-              <Text style={styles.sectionTitle}>Legal</Text>
-              <Pressable style={styles.legalLinkRow} onPress={() => openLegalLink(LEGAL_URLS.privacy)}>
-                <Text style={styles.legalLinkText}>Política de privacidad</Text>
-                <Ionicons name="open-outline" size={16} color="#0D9BA5" />
-              </Pressable>
-              <Pressable style={styles.legalLinkRow} onPress={() => openLegalLink(LEGAL_URLS.terms)}>
-                <Text style={styles.legalLinkText}>Términos y condiciones</Text>
-                <Ionicons name="open-outline" size={16} color="#0D9BA5" />
-              </Pressable>
-              <Pressable style={styles.legalLinkRow} onPress={() => openLegalLink(LEGAL_URLS.accountDeletion)}>
-                <Text style={styles.legalLinkText}>Información de eliminación de cuenta</Text>
-                <Ionicons name="open-outline" size={16} color="#0D9BA5" />
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBubble}>
+                  <Ionicons name="shield-checkmark-outline" size={14} color="#159DA4" />
+                </View>
+                <Text style={styles.sectionTitle}>Acciones y legal</Text>
+              </View>
+              <View style={styles.legalActionsGrid}>
+                <Pressable style={styles.legalActionItem} onPress={() => openLegalLink('privacy')}>
+                  <View style={styles.legalActionIconWrap}>
+                    <Ionicons name="shield-checkmark-outline" size={16} color="#0D9BA5" />
+                  </View>
+                  <Text style={styles.legalActionText} numberOfLines={2}>Privacidad</Text>
+                </Pressable>
+                <Pressable style={styles.legalActionItem} onPress={() => openLegalLink('terms')}>
+                  <View style={styles.legalActionIconWrap}>
+                    <Ionicons name="document-text-outline" size={16} color="#0D9BA5" />
+                  </View>
+                  <Text style={styles.legalActionText} numberOfLines={2}>Terminos</Text>
+                </Pressable>
+                <Pressable style={styles.legalActionItem} onPress={openDeleteAccountModal}>
+                  <View style={[styles.legalActionIconWrap, styles.dangerIconWrap]}>
+                    <Ionicons name="trash-outline" size={16} color="#E64A5D" />
+                  </View>
+                  <Text style={[styles.legalActionText, styles.dangerText]} numberOfLines={2}>Eliminar cuenta</Text>
+                </Pressable>
+                <Pressable style={[styles.legalActionItem, styles.legalActionItemLast]} onPress={logout}>
+                  <View style={[styles.legalActionIconWrap, styles.warningIconWrap]}>
+                    <Ionicons name="log-out-outline" size={16} color="#F05A28" />
+                  </View>
+                  <Text style={styles.legalActionText} numberOfLines={2}>Cerrar sesion</Text>
+                </Pressable>
+              </View>
+              <Pressable style={styles.legalInfoLink} onPress={() => openLegalLink('accountDeletion')}>
+                <Text style={styles.legalInfoLinkText}>Información de eliminación de cuenta</Text>
+                <Ionicons name="chevron-forward" size={16} color="#0D9BA5" />
               </Pressable>
             </Card>
 
@@ -532,9 +544,6 @@ export default function ProfileScreen() {
               </Text>
               <Button label="Eliminar cuenta" variant="danger" onPress={openDeleteAccountModal} />
             </Card>
-
-            <Button label="Cerrar sesión" onPress={logout} variant="danger" />
-
             <Modal
               visible={docTypeModalVisible}
               transparent
@@ -791,9 +800,17 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: '#4D6383',
   },
-  commercialRole: {
+  rolePill: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xxs,
+    borderRadius: 999,
+    backgroundColor: '#DDF5EF',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  rolePillText: {
     ...typography.captionStrong,
-    color: '#2B476E',
+    color: '#138F84',
   },
   validInfoText: {
     ...typography.captionStrong,
@@ -912,20 +929,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4F7FB',
     gap: spacing.xs,
   },
-  legalLinkRow: {
-    minHeight: 44,
+  legalActionsGrid: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#DCE5F1',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  legalActionItem: {
+    flex: 1,
+    minHeight: 84,
+    flexDirection: 'column',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRightWidth: 1,
+    borderRightColor: '#DCE5F1',
+  },
+  legalActionItemLast: {
+    borderRightWidth: 0,
+  },
+  legalActionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F7F9',
+  },
+  warningIconWrap: {
+    backgroundColor: '#FFF1EA',
+  },
+  dangerIconWrap: {
+    backgroundColor: '#FFECEF',
+  },
+  legalActionText: {
+    ...typography.captionStrong,
+    color: '#1C365B',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  dangerText: {
+    color: '#D14A5A',
+  },
+  legalInfoLink: {
+    marginTop: spacing.xs,
+    minHeight: 40,
     borderWidth: 1,
     borderColor: '#D4E0EE',
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  legalLinkText: {
-    ...typography.body,
-    color: '#1B355A',
+  legalInfoLinkText: {
+    ...typography.captionStrong,
+    color: '#1C365B',
   },
   deleteCard: {
     marginBottom: spacing.md,
@@ -1028,3 +1094,4 @@ const styles = StyleSheet.create({
     color: '#1C355B',
   },
 });
+

@@ -142,6 +142,14 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
   const [removedImageIds, setRemovedImageIds] = useState<(number | string)[]>([]);
 
   const { catalogs, loading: loadingCatalogs, error: catalogErrorText, reload: reloadCatalogs } = usePropertyFormCatalogs(step === 2 ? selectedType : null);
+  
+  // Sincronizar operationMode con el objeto form para el motor dinámico (Agent: Gemma)
+  React.useEffect(() => {
+    setForm(prev => {
+      if (prev.operation_mode === operationMode) return prev;
+      return { ...prev, operation_mode: operationMode };
+    });
+  }, [operationMode]);
 
   const updateField = useCallback((key: string, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -299,6 +307,7 @@ export const PropertyFormProvider: React.FC<{ children: React.ReactNode; initial
     const payload = sanitizePayload({
       type_id: selectedTypeId,
       type: selectedTypeId,
+      category: operationMode === 'alquiler' ? 1 : (operationMode === 'venta' ? 2 : 3),
       title: String(form.title || '').trim(),
       operation_type: OPERATION_OPTIONS.find(o => o.value === operationMode)?.operationType || 'Venta',
       price: preferredPrice > 0 ? preferredPrice : null,

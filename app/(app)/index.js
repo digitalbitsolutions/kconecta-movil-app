@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   ImageBackground,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,9 +19,11 @@ import { useAuthStore } from '../../store/useAuthStore';
 import {
   getApiErrorDetails,
   getMeApi,
+  getMyServiceRatingsDashboardApi,
   getPropertiesApi,
-  getServicesApi,
   getServiceProfileApi,
+  getServicesApi,
+  submitServiceRatingByCodeApi,
 } from '../../api/client';
 import { getProviderMetricsSafe } from '../../services/providerMetricsService';
 import {
@@ -38,6 +42,7 @@ import { calculateDashboardMetrics } from '../../components/dashboard/dashboardH
 import { StatsCard, DistributionRow, DISTRIBUTION_COLORS } from '../../components/dashboard/DashboardStats';
 import { PropertyItem, KPIRow } from '../../components/dashboard/RecentActivity';
 import { UserInsights } from '../../components/dashboard/UserInsights';
+import { mapClientDashboardResponse, submitRatingAndReloadDashboard } from '../../utils/clientRatingsDashboard';
 
 const MiniStat = ({ value, label }) => (
   <View style={styles.miniStat}>
@@ -82,7 +87,7 @@ const MetricCard = ({ title, value, unit, delta, progress, showDivider }) => {
           <Text style={styles.metricUnit}>{unit}</Text>
         </View>
       </View>
-      <Text style={styles.metricDelta}>↑ {delta}%</Text>
+      <Text style={styles.metricDelta}>â†‘ {delta}%</Text>
       <Text style={styles.metricDeltaHint}>vs. mes anterior</Text>
     </View>
   );
@@ -187,7 +192,7 @@ const resolveProviderMetrics = ({ apiMetrics, profile, services }) => {
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
 
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +201,17 @@ export default function DashboardScreen() {
   const [providerRating, setProviderRating] = useState(null);
   const [providerReviewsCount, setProviderReviewsCount] = useState(null);
   const [providerMetrics, setProviderMetrics] = useState({ visits: 0, clicks: 0, tickets: 0 });
+  const [clientRatingStats, setClientRatingStats] = useState({
+    ratingsCount: 0,
+    providersRatedCount: 0,
+    averageStars: 0,
+  });
+  const [clientRecentRatings, setClientRecentRatings] = useState([]);
+  const [workCode, setWorkCode] = useState('');
+  const [selectedStars, setSelectedStars] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [clientDashboardLoading, setClientDashboardLoading] = useState(false);
+  const [clientDashboardForbidden, setClientDashboardForbidden] = useState(false);
 
   const adminView = isAdminUser(user);
   const providerView = isServiceProviderUser(user);
@@ -216,6 +232,10 @@ export default function DashboardScreen() {
   } = metrics || {};
 
   const roleName = userLevelName(user);
+  const debugLevelId = Number.parseInt(String(user?.user_level_id ?? user?.level_id ?? user?.role_id ?? ''), 10);
+  const clientView = debugLevelId === 6;
+  const averageStarsValue = Math.max(0, Math.min(5, Number(clientRatingStats.averageStars || 0)));
+  const averageStarsRounded = Math.round(averageStarsValue);
   const welcomeName = pickString(user?.first_name, user?.user_name, 'Usuario');
   const welcomeEmail = pickString(user?.email, '-');
 
@@ -254,6 +274,35 @@ export default function DashboardScreen() {
     });
   };
 
+  const loadClientDashboard = async ({ showLoader = false } = {}) => {
+    if (showLoader) setClientDashboardLoading(true);
+    setClientDashboardForbidden(false);
+    try {
+      const payload = await getMyServiceRatingsDashboardApi();
+      const mapped = mapClientDashboardResponse(payload);
+      setClientRatingStats(mapped.stats);
+      setClientRecentRatings(mapped.recentRatings);
+    } catch (error) {
+      const details = getApiErrorDetails(error);
+      const apiCode = String(details?.data?.errors?.code || '');
+      const status = details?.status;
+
+      if (status === 401 || apiCode === 'UNAUTHENTICATED') {
+        await logout();
+        Alert.alert('Sesión expirada', 'Tu sesión expiró. Inicia sesión nuevamente.');
+        return;
+      }
+      if (status === 403 && apiCode === 'ROLE_NOT_ALLOWED') {
+        setClientDashboardForbidden(true);
+        return;
+      }
+
+      Alert.alert('No se pudo cargar', 'Ocurrió un error al cargar tus valoraciones. Intenta nuevamente.');
+    } finally {
+      if (showLoader) setClientDashboardLoading(false);
+    }
+  };
+
   const fetchDashboardData = async () => {
     const endpointErrors = [];
     let effectiveUser = user;
@@ -290,8 +339,16 @@ export default function DashboardScreen() {
       }
     }
 
+    const effectiveLevel = Number.parseInt(
+      String(effectiveUser?.user_level_id ?? effectiveUser?.level_id ?? effectiveUser?.role_id ?? ''),
+      10
+    );
+    if (effectiveLevel === 6) {
+      await loadClientDashboard({ showLoader: false });
+    }
+
     if (endpointErrors.length) {
-      Alert.alert('Error de conexión', `No se pudo cargar el dashboard completo (${endpointErrors.join(' | ')}).`);
+      Alert.alert('Error de conexiÃ³n', `No se pudo cargar el dashboard completo (${endpointErrors.join(' | ')}).`);
     }
   };
 
@@ -311,6 +368,9 @@ export default function DashboardScreen() {
     setRefreshing(true);
     try {
       await fetchDashboardData();
+      if (clientView) {
+        await loadClientDashboard({ showLoader: false });
+      }
     } finally {
       setRefreshing(false);
     }
@@ -320,6 +380,57 @@ export default function DashboardScreen() {
     const id = propertyId(property);
     if (!id) return;
     router.push({ pathname: '/property/[id]', params: { id } });
+  };
+
+  const submitClientRating = async () => {
+    setSubmittingRating(true);
+    try {
+      const result = await submitRatingAndReloadDashboard({
+        workCode,
+        stars: selectedStars,
+        submitByCode: submitServiceRatingByCodeApi,
+        fetchDashboard: getMyServiceRatingsDashboardApi,
+      });
+      setClientRatingStats(result.mappedDashboard.stats);
+      setClientRecentRatings(result.mappedDashboard.recentRatings);
+
+      setWorkCode('');
+      setSelectedStars(0);
+      Alert.alert('Valoración registrada', String(result.submitPayload?.message || 'Valoracion registrada correctamente.'));
+    } catch (error) {
+      if (String(error?.message || '') === 'WORK_CODE_REQUIRED') {
+        Alert.alert('Código requerido', 'Ingresa un código de trabajo para valorar.');
+        return;
+      }
+      if (String(error?.message || '') === 'STARS_REQUIRED') {
+        Alert.alert('Valoración requerida', 'Selecciona una cantidad de estrellas.');
+        return;
+      }
+      const details = getApiErrorDetails(error);
+      const apiCode = String(details?.data?.errors?.code || '');
+      const status = details?.status;
+
+      console.warn('client rating submit failed:', { status, apiCode, message: details.message });
+
+      if (status === 401 || apiCode === 'UNAUTHENTICATED') {
+        await logout();
+        Alert.alert('Sesión expirada', 'Tu sesión expiró. Inicia sesión nuevamente.');
+      } else if (status === 403 && apiCode === 'ROLE_NOT_ALLOWED') {
+        Alert.alert('Perfil no permitido', 'Solo clientes finales pueden valorar proveedores.');
+      } else if (status === 403 && apiCode === 'EMAIL_NOT_VERIFIED') {
+        Alert.alert('Verificación pendiente', 'Debes verificar tu e-mail para poder valorar.');
+      } else if (status === 422 && apiCode === 'WORK_CODE_INVALID') {
+        Alert.alert('Código inválido', 'El código de trabajo no es válido.');
+      } else if (status === 422 && apiCode === 'WORK_CODE_USED') {
+        Alert.alert('Código ya utilizado', 'Este código de trabajo ya fue utilizado.');
+      } else if (status === 422 && apiCode === 'SELF_RATING_NOT_ALLOWED') {
+        Alert.alert('Acción no permitida', 'No puedes valorarte a ti mismo.');
+      } else {
+        Alert.alert('No se pudo registrar', 'Ocurrió un error. Si persiste, contacta a soporte.');
+      }
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   return (
@@ -336,7 +447,7 @@ export default function DashboardScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, clientView ? styles.clientContentCompact : null]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {providerView ? (
@@ -367,14 +478,14 @@ export default function DashboardScreen() {
                   <MiniStat value={providerServicesCount !== null ? String(providerServicesCount) : '--'} label="Servicios" />
                   <MiniStat
                     value={providerRating && providerRating !== '--'
-                      ? <Text style={styles.miniStatValue}><Text style={styles.ratingStar}>★</Text> {providerRating}{providerReviewsCount !== null ? ` (${providerReviewsCount})` : ''}</Text>
+                      ? <Text style={styles.miniStatValue}><Text style={styles.ratingStar}>â˜…</Text> {providerRating}{providerReviewsCount !== null ? ` (${providerReviewsCount})` : ''}</Text>
                       : '--'}
-                    label="Valoración"
+                    label="ValoraciÃ³n"
                   />
                 </View>
               </UiCard>
 
-              <Text style={styles.sectionTitle}>Métricas clave</Text>
+              <Text style={styles.sectionTitle}>MÃ©tricas clave</Text>
               <Text style={styles.sectionSubtitle}>Rendimiento de tu perfil</Text>
               <UiCard style={[styles.card, styles.metricsPanel]}>
                 <MetricCard
@@ -403,10 +514,104 @@ export default function DashboardScreen() {
                 />
               </UiCard>
             </>
+          ) : clientView ? (
+            <>
+              {clientDashboardLoading ? (
+                <UiCard style={styles.card}>
+                  <Text style={styles.paragraph}>Cargando valoraciones...</Text>
+                </UiCard>
+              ) : null}
+
+              {clientDashboardForbidden ? (
+                <UiCard style={styles.card}>
+                  <Text style={styles.cardTitle}>Acceso restringido</Text>
+                  <Text style={styles.paragraph}>Este dashboard es exclusivo para clientes finales.</Text>
+                </UiCard>
+              ) : null}
+
+              <UiCard style={[styles.card, styles.clientSummaryCard]}>
+                <Text style={styles.clientSummaryTitle}>Resumen general</Text>
+                <View style={styles.clientSummaryStatsRow}>
+                  <View style={styles.clientSummaryStat}>
+                    <Text style={styles.clientSummaryStatValue}>{clientRatingStats.ratingsCount}</Text>
+                    <Text style={styles.clientSummaryStatLabel}>Valoraciones realizadas</Text>
+                  </View>
+                  <View style={styles.clientSummaryDivider} />
+                  <View style={styles.clientSummaryStat}>
+                    <Text style={styles.clientSummaryStatValue}>{clientRatingStats.providersRatedCount}</Text>
+                    <Text style={styles.clientSummaryStatLabel}>Proveedores valorados</Text>
+                  </View>
+                  <View style={styles.clientSummaryDivider} />
+                  <View style={styles.clientSummaryStat}>
+                    <View style={styles.clientSummaryStarsRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Text key={`summary-star-${star}`} style={[styles.clientSummaryStar, star <= averageStarsRounded ? null : styles.clientSummaryStarInactive]}>
+                          ★
+                        </Text>
+                      ))}
+                    </View>
+                    <Text style={styles.clientSummaryStatLabel}>Promedio</Text>
+                  </View>
+                </View>
+              </UiCard>
+
+              <UiCard style={styles.card}>
+                <View style={styles.cardRowBetween}>
+                  <Text style={styles.cardTitle}>Tu actividad de valoraciones</Text>
+                </View>
+                {clientRecentRatings.length ? (
+                  clientRecentRatings.map((item) => (
+                    <View key={item.id} style={styles.clientActivityItem}>
+                      <Text style={styles.clientActivityProvider}>{item.provider}</Text>
+                      <Text style={styles.clientActivityStars}>{'★'.repeat(item.stars)}{'☆'.repeat(5 - item.stars)}</Text>
+                      <Text style={styles.clientActivityDate}>Actualizado: {item.updatedAt}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>Aún no has realizado valoraciones.</Text>
+                )}
+              </UiCard>
+
+              <UiCard style={styles.card}>
+                <Text style={styles.cardTitle}>Realizar valoración</Text>
+                <Text style={styles.paragraph}>Envía tu feedback sobre un servicio recibido.</Text>
+
+                <Text style={styles.clientFieldLabel}>Código de trabajo</Text>
+                <TextInput
+                  style={styles.clientInput}
+                  value={workCode}
+                  onChangeText={setWorkCode}
+                  placeholder="Ej: WK-XXXXXXX"
+                  autoCapitalize="characters"
+                />
+
+                <Text style={styles.clientFieldLabel}>Calidad del servicio</Text>
+                <View style={styles.clientStarsRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Pressable key={`star-${star}`} onPress={() => setSelectedStars(star)} style={styles.starButton}>
+                      <Text style={[styles.starText, star <= selectedStars ? styles.starTextActive : null]}>★</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Pressable
+                  style={[styles.clientSaveButton, submittingRating && styles.clientSaveButtonDisabled]}
+                  onPress={submitClientRating}
+                  disabled={submittingRating}
+                >
+                  <Text style={styles.clientSaveButtonText}>{submittingRating ? 'Guardando...' : 'Guardar'}</Text>
+                </Pressable>
+              </UiCard>
+
+              <UiCard style={[styles.card, styles.clientHelpCard]}>
+                <Text style={styles.clientHelpTitle}>Tu opinión nos ayuda a mejorar</Text>
+                <Text style={styles.clientHelpText}>Cada valoración cuenta para seguir ofreciendo el mejor servicio.</Text>
+              </UiCard>
+            </>
           ) : !propertyAccessEnabled ? (
             <UiCard style={styles.card}>
-              <Text style={styles.cardTitle}>Módulo inmuebles</Text>
-              <Text style={styles.paragraph}>Esta etapa móvil está enfocada en gestión de inmuebles. Tu perfil actual no tiene permisos para este módulo.</Text>
+              <Text style={styles.cardTitle}>MÃ³dulo inmuebles</Text>
+              <Text style={styles.paragraph}>Esta etapa mÃ³vil estÃ¡ enfocada en gestiÃ³n de inmuebles. Tu perfil actual no tiene permisos para este mÃ³dulo.</Text>
             </UiCard>
           ) : (
             <>
@@ -421,7 +626,7 @@ export default function DashboardScreen() {
               <UiCard style={styles.card}>
                 <View style={styles.cardRowBetween}>
                   <Text style={styles.cardTitle}>Tipo de inmueble visitado</Text>
-                  <Text style={styles.cardHint}>Distribución por inmuebles</Text>
+                  <Text style={styles.cardHint}>DistribuciÃ³n por inmuebles</Text>
                 </View>
                 {typeDistribution?.length ? (
                   typeDistribution.map((item, index) => (
@@ -440,7 +645,7 @@ export default function DashboardScreen() {
 
               <View style={styles.twoColumnGrid}>
                 <UiCard style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.cardTitle}>Últimos anuncios de propiedades</Text>
+                  <Text style={styles.cardTitle}>Ãšltimos anuncios de propiedades</Text>
                   {recentProperties?.length ? (
                     recentProperties.map((item) => (
                       <PropertyItem key={propertyId(item)} item={item} adminView={adminView} onPress={handlePropertyPress} />
@@ -453,7 +658,7 @@ export default function DashboardScreen() {
                 <UiCard style={[styles.card, { flex: 1 }]}>
                   <Text style={styles.cardTitle}>Actividad</Text>
                   <KPIRow label="Vistas en detalle" value={viewsCount} />
-                  <KPIRow label="Vistas en búsqueda" value={searchViewsCount} />
+                  <KPIRow label="Vistas en bÃºsqueda" value={searchViewsCount} />
                   <KPIRow label="Publicados" value={publishedCount} />
                   <KPIRow label="Pendientes" value={pendingCount} />
                 </UiCard>
@@ -478,6 +683,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: spacing.md, color: colors.textMuted, ...typography.body },
   content: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxxl },
+  clientContentCompact: { paddingBottom: spacing.md },
 
   providerHero: { minHeight: 160, borderRadius: 18, overflow: 'hidden', marginBottom: spacing.md },
   providerHeroImage: { borderRadius: 18 },
@@ -522,4 +728,118 @@ const styles = StyleSheet.create({
   cardHint: { color: colors.textMuted, ...typography.captionStrong },
   paragraph: { color: colors.textSoft, ...typography.body, lineHeight: 20 },
   emptyText: { color: colors.textMuted, ...typography.label, lineHeight: 18 },
+  clientActivityItem: {
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+    borderRadius: 12,
+    backgroundColor: '#F5F9FF',
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  clientActivityProvider: { ...typography.bodyStrong, color: '#1A2F52' },
+  clientActivityStars: { marginTop: 2, color: '#F4B400', fontSize: 16 },
+  clientActivityDate: { marginTop: 2, ...typography.caption, color: '#667B98' },
+  clientFieldLabel: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xxs,
+    ...typography.captionStrong,
+    color: '#1F365A',
+  },
+  clientInput: {
+    borderWidth: 1,
+    borderColor: '#CFDAE8',
+    borderRadius: 10,
+    minHeight: 46,
+    backgroundColor: '#F4F8FC',
+    paddingHorizontal: spacing.sm,
+    color: '#12345D',
+    ...typography.body,
+  },
+  clientStarsRow: { flexDirection: 'row', marginTop: spacing.xs, marginBottom: spacing.md },
+  starButton: { marginRight: spacing.xs, paddingVertical: 4, paddingHorizontal: 2 },
+  starText: { fontSize: 30, color: '#CFD8E4' },
+  starTextActive: { color: '#F4B400' },
+  clientSaveButton: {
+    marginTop: spacing.sm,
+    backgroundColor: '#1BB5AF',
+    borderRadius: 10,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientSaveButtonDisabled: { opacity: 0.7 },
+  clientSaveButtonText: { ...typography.h3, color: '#FFFFFF' },
+  clientSummaryCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#0EA8B1',
+    backgroundColor: '#0D9EA8',
+  },
+  clientSummaryTitle: {
+    ...typography.captionStrong,
+    color: '#D5FCFF',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  clientSummaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+  },
+  clientSummaryStat: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientSummaryDivider: {
+    width: 1,
+    backgroundColor: 'rgba(217, 252, 255, 0.35)',
+    marginHorizontal: spacing.xs,
+  },
+  clientSummaryStatValue: {
+    ...typography.h1,
+    color: '#FFFFFF',
+  },
+  clientSummaryStatLabel: {
+    ...typography.caption,
+    color: '#D2F8FB',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  clientSummaryStarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientSummaryStar: {
+    fontSize: 18,
+    color: '#F4C430',
+    marginHorizontal: 1,
+  },
+  clientSummaryStarInactive: {
+    color: 'rgba(255,255,255,0.45)',
+  },
+  clientHeaderAction: {
+    ...typography.captionStrong,
+    color: '#0E9EA9',
+  },
+  clientHelpCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#133A6A',
+    backgroundColor: '#0D2F5A',
+  },
+  clientHelpTitle: {
+    ...typography.h3,
+    color: '#FFFFFF',
+    marginBottom: spacing.xxs,
+  },
+  clientHelpText: {
+    ...typography.body,
+    color: '#CCE0FF',
+    lineHeight: 20,
+  },
 });
+
+

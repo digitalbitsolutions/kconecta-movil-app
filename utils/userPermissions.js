@@ -29,6 +29,13 @@ export const canManagePropertiesUser = (rawUser) => {
 
 export const canAccessUsers = (rawUser) => isAdminUser(rawUser);
 
+export const isServiceProviderUser = (rawUser) => {
+  const levelId = extractLevelId(rawUser);
+  return levelId === 4;
+};
+
+export const canAccessServicesModule = (rawUser) => isAdminUser(rawUser) || isServiceProviderUser(rawUser);
+
 export const canEditPropertyUser = (rawUser, property) => {
   if (!canManagePropertiesUser(rawUser)) return false;
   if (isAdminUser(rawUser)) return true;

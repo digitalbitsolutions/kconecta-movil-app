@@ -37,6 +37,19 @@ export const pickString = (...values) => {
   return '';
 };
 
+export const sanitizeText = (value, options = {}) => {
+  const { maxLength = 180, fallback = '' } = options;
+  if (value === null || value === undefined) return fallback;
+
+  const asString = typeof value === 'string' ? value : String(value);
+  const withoutControlChars = asString.replace(/[\u0000-\u001F\u007F]/g, ' ');
+  const collapsedWhitespace = withoutControlChars.replace(/\s+/g, ' ').trim();
+
+  if (!collapsedWhitespace) return fallback;
+  if (collapsedWhitespace.length <= maxLength) return collapsedWhitespace;
+  return `${collapsedWhitespace.slice(0, maxLength).trimEnd()}...`;
+};
+
 export const extractUser = (payload) => {
   if (!payload) return null;
   if (payload.user) return payload.user;

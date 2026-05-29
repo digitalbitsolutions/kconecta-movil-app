@@ -242,26 +242,14 @@ export default function ServicesScreen() {
                   <Ionicons name="reorder-three-outline" size={14} color="#16979D" />
                 </View>
                 <View>
-                  <Text style={styles.sectionTitle}>{'Descripci\u00F3n'}</Text>
-                  <Text style={styles.sectionSubtitle}>{'Presentaci\u00F3n comercial'}</Text>
+                  <Text style={styles.sectionTitle}>{'Descripción'}</Text>
+                  <Text style={styles.sectionSubtitle}>{'Presentación comercial'}</Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push('/services/profile')}
-                style={styles.editIconButton}
-                accessibilityRole="button"
-                accessibilityLabel={'Editar descripci\u00F3n'}
-              >
-                <Ionicons name="pencil-outline" size={14} color="#16979D" />
-              </TouchableOpacity>
             </View>
             <Text style={styles.description}>{description}</Text>
           </Card>
         </View>
-
-
-        
-
 
         <View style={styles.twoCol}>
           <Card style={styles.colCard}>

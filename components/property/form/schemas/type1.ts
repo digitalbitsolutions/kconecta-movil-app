@@ -1,10 +1,5 @@
 import { PropertyFormSchema } from './types';
 
-/**
- * SOURCE OF TRUTH: PROMPT USUARIO (2026-03-23)
- * SCHEMA IDENTICO 1:1 AL CRM
- * Agent: Gemma-3
- */
 export const houseChaletSchema: PropertyFormSchema = {
   typeId: 1,
   sections: [
@@ -13,19 +8,15 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'Localización del inmueble',
       fields: [
         { name: 'city', label: 'Localidad', type: 'text', required: true },
-        { name: 'street', label: 'Nombre de la vía', type: 'location', required: true },
-        { name: 'block', label: 'Bloque / Escalera', type: 'text' },
+        { name: 'address', label: 'Nombre de la vía', type: 'location', required: true },
+        { name: 'esc_block', label: 'Bloque / Escalera', type: 'text' },
         { name: 'door', label: 'Puerta', type: 'text' },
-        { name: 'urbanization', label: 'Nombre de la urbanización', type: 'text' },
+        { name: 'name_urbanization', label: 'Nombre de la urbanización', type: 'text' },
         {
-          name: 'address_visibility',
+          name: 'visibility_in_portals',
           label: 'Visibilidad en portales',
           type: 'radio',
-          options: [
-            { value: 'exact', label: 'Dirección exacta' },
-            { value: 'street_only', label: 'Mostrar solo calle' },
-            { value: 'hidden', label: 'Ocultar dirección' }
-          ]
+          optionsKey: 'visibility_in_portals'
         }
       ]
     },
@@ -34,43 +25,73 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'Operación y precio',
       fields: [
         {
-          name: 'operation_type',
+          name: 'category', 
           label: 'Operación',
           type: 'select',
-          required: true,
           options: [
-            { value: 'sale', label: 'Venta' },
-            { value: 'rent', label: 'Alquiler' },
-            { value: 'both', label: 'Venta + Alquiler' }
-          ]
-        },
-        { 
-          name: 'sale_price', 
-          label: 'Precio de venta', 
-          type: 'number',
-          visibleIf: (f) => f.operation_type === 'sale' || f.operation_type === 'both'
-        },
-        { 
-          name: 'community_cost', 
-          label: 'Gastos de comunidad (€/mes)', 
-          type: 'number',
-          visibleIf: (f) => f.operation_type === 'sale' || f.operation_type === 'both'
-        },
-        { 
-          name: 'ibi', 
-          label: 'IBI (€/año)', 
-          type: 'number',
-          visibleIf: (f) => f.operation_type === 'sale' || f.operation_type === 'both'
+            { value: 'alquiler', label: 'Alquiler' },
+            { value: 'venta', label: 'Venta' }
+          ],
+          required: true
         },
         {
-          name: 'mortgage',
-          label: 'Hipoteca pendiente',
+          name: 'rental_type',
+          label: 'TIPO DE ALQUILER',
+          type: 'radio',
+          optionsKey: 'rental_type',
+          visibleIf: (form) => form.operation_mode === 'alquiler'
+        },
+        {
+          name: 'rental_price',
+          label: 'PRECIO DE ALQUILER',
+          type: 'number',
+          props: { suffix: '€' },
+          visibleIf: (form) => form.operation_mode === 'alquiler'
+        },
+        {
+          name: 'guarantee',
+          label: 'FIANZA',
+          type: 'number',
+          props: { suffix: 'Meses' },
+          visibleIf: (form) => form.operation_mode === 'alquiler'
+        },
+        {
+          name: 'sale_price',
+          label: 'PRECIO DE VENTA',
+          type: 'number',
+          props: { suffix: '€' },
+          visibleIf: (form) => form.operation_mode === 'venta'
+        },
+        {
+          name: 'community_expenses',
+          label: 'GASTOS DE COMUNIDAD',
+          type: 'number',
+          props: { suffix: '€/mes' },
+          visibleIf: (form) => form.operation_mode === 'venta'
+        },
+        {
+          name: 'ibi',
+          label: 'IBI',
+          type: 'number',
+          props: { suffix: '€/año' },
+          visibleIf: (form) => form.operation_mode === 'venta'
+        },
+        {
+          name: 'mortgage_state',
+          label: 'HIPOTECA PENDIENTE',
           type: 'radio',
           options: [
-            { value: true, label: 'Sí' },
-            { value: false, label: 'No' }
+            { value: '1', label: 'SI' },
+            { value: '0', label: 'NO' }
           ],
-          visibleIf: (f) => f.operation_type === 'sale' || f.operation_type === 'both'
+          visibleIf: (form) => form.operation_mode === 'venta'
+        },
+        {
+          name: 'mortgage_rate',
+          label: 'Importe de hipoteca',
+          type: 'number',
+          props: { suffix: '€' },
+          visibleIf: (form) => form.operation_mode === 'venta' && String(form.mortgage_state) === '1'
         }
       ]
     },
@@ -79,80 +100,73 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'Características de la casa o chalet',
       fields: [
         {
-          name: 'property_subtype',
-          label: 'Tipo de vivienda',
-          type: 'select',
-          options: [
-            { value: 'adosado', label: 'Chalet adosado' },
-            { value: 'pareado', label: 'Chalet pareado' },
-            { value: 'independiente', label: 'Chalet independiente' },
-            { value: 'rustica', label: 'Casa rústica' }
-          ]
-        },
-        {
-          name: 'condition',
+          name: 'state_conservation',
           label: 'Estado de conservación',
           type: 'select',
-          options: [
-            { value: 'good', label: 'Buen estado' },
-            { value: 'renovation', label: 'A reformar' },
-            { value: 'new', label: 'Obra nueva' }
-          ]
+          optionsKey: 'state_conservation'
         },
-        { name: 'meters_plot', label: 'M² PARCELA', type: 'number' },
-        { name: 'rooms', label: 'NÚMERO DE DORMITORIOS', type: 'stepper', props: { min: 0, max: 20 } },
+        { name: 'bedrooms', label: 'NÚMERO DE DORMITORIOS', type: 'stepper', props: { min: 0, max: 20 } },
+        { name: 'bathrooms', label: 'NÚMERO DE BAÑOS', type: 'stepper', props: { min: 0, max: 20 } },
         {
           name: 'facade',
           label: 'FACHADA DEL INMUEBLE',
           type: 'radio',
-          options: [
-            { value: 'exterior', label: 'Exterior' },
-            { value: 'interior', label: 'Interior' }
-          ]
+          optionsKey: 'facade'
         },
-        { name: 'floors', label: 'PLANTAS DEL CHALET', type: 'number' },
-        { name: 'bathrooms', label: 'NÚMERO DE BAÑOS', type: 'stepper', props: { min: 0, max: 20 } },
-        { name: 'built_area', label: 'm² construidos', type: 'number' },
-        { name: 'usable_area', label: 'm² útiles', type: 'number' },
-        { name: 'garage_spaces', label: 'Plazas de garaje', type: 'number' },
+        { name: 'number_of_plants', label: 'PLANTAS DEL CHALET', type: 'number' },
+        { name: 'meters_built', label: 'm² construidos', type: 'number' },
+        { name: 'plot_meters', label: 'M² PARCELA', type: 'number' },
+        { name: 'useful_meters', label: 'm² útiles', type: 'number' },
+        { name: 'parking', label: 'Plazas de garaje', type: 'number' },
         {
-          name: 'orientation',
+          name: 'orientation[]',
           label: 'ORIENTACIÓN',
           type: 'multiselect',
           options: [
-            { value: 'north', label: 'Norte' },
-            { value: 'south', label: 'Sur' },
-            { value: 'east', label: 'Este' },
-            { value: 'west', label: 'Oeste' }
+            { value: '1', label: 'Norte' },
+            { value: '2', label: 'Sur' },
+            { value: '3', label: 'Este' },
+            { value: '4', label: 'Oeste' }
           ]
         },
         {
-          name: 'extras',
+          name: 'feature[]',
           label: 'OTRAS CARACTERÍSTICAS DEL CHALET O CASA',
           type: 'multiselect',
           options: [
-            { value: 'ac', label: 'Aire acondicionado' },
-            { value: 'balcony', label: 'Balcón' },
-            { value: 'pool', label: 'Piscina' },
-            { value: 'terrace', label: 'Terraza' },
-            { value: 'bbq', label: 'Barbacoa' },
-            { value: 'concierge', label: 'Conserje' },
-            { value: 'solar_panel', label: 'Panel solar' },
-            { value: 'patio', label: 'Patio' },
-            { value: 'storage', label: 'Trastero' },
-            { value: 'wardrobes', label: 'Armarios empotrados' },
-            { value: 'garage', label: 'Plaza de garaje' },
-            { value: 'garden', label: 'Jardín' },
-            { value: 'wheelchair', label: 'Adaptado para silla de rueda' }
+            { value: '1', label: 'Aire acondicionado' },
+            { value: '2', label: 'Balcón' },
+            { value: '3', label: 'Piscina' },
+            { value: '4', label: 'Terraza' },
+            { value: '5', label: 'Barbacoa' },
+            { value: '6', label: 'Conserje' },
+            { value: '7', label: 'Panel Solar' },
+            { value: '8', label: 'Patio' },
+            { value: '9', label: 'Trastero' },
+            { value: '10', label: 'Armarios empotrados' },
+            { value: '11', label: 'Plaza de garaje' },
+            { value: '12', label: 'Jardín' },
+            { value: '13', label: 'Adaptado para silla de rueda' }
           ]
         },
         {
-          name: 'heating_type',
+          name: 'equipment[]',
+          label: 'EQUIPAMIENTO',
+          type: 'multiselect',
+          options: [
+            { value: '1', label: 'Cocina con electrodomésticos y casa amueblada' },
+            { value: '2', label: 'Cocina con electrodomésticos y casa sin amueblar' },
+            { value: '3', label: 'Cocina vacía y casa sin amueblar' },
+            { value: '4', label: 'No lo sé' }
+          ]
+        },
+        {
+          name: 'type_heating',
           label: 'Tipo de calefacción',
           type: 'select',
           optionsKey: 'type_heating'
         },
-        { name: 'construction_year', label: 'Año de construcción', type: 'number' }
+        { name: 'year_of_construction', label: 'Año de construcción', type: 'number' }
       ]
     },
     {
@@ -160,7 +174,7 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'CATEGORÍA',
       fields: [
         {
-          name: 'category',
+          name: 'bank_owned_property',
           label: 'Categoría',
           type: 'boolean',
           props: { label: 'Inmueble de banco' }
@@ -168,16 +182,16 @@ export const houseChaletSchema: PropertyFormSchema = {
       ]
     },
     {
-      id: 'elevator',
+      id: 'elevator-section',
       title: 'Ascensor',
       fields: [
         {
-          name: 'has_elevator',
+          name: 'elevator',
           label: '¿Tiene ascensor?',
           type: 'radio',
           options: [
-            { value: true, label: 'Sí' },
-            { value: false, label: 'No' }
+            { value: '1', label: 'Sí' },
+            { value: '2', label: 'No' }
           ]
         }
       ]
@@ -187,28 +201,28 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'Energía y emisiones',
       fields: [
         {
-          name: 'energy_certificate',
+          name: 'power_consumption_rating',
           label: 'CALIFICACIÓN DE CONSUMO DE ENERGÍA',
           type: 'select',
-          optionsKey: 'type_energy_certificates'
+          optionsKey: 'power_consumption_rating'
         },
         {
-          name: 'energy_emissions',
+          name: 'emissions_rating',
           label: 'CALIFICACIÓN DE EMISIONES',
           type: 'select',
-          optionsKey: 'type_energy_certificates'
+          optionsKey: 'emissions_rating'
         },
-        { 
-          name: 'energy_consumption', 
-          label: 'CONSUMO DE ENERGÍA', 
-          type: 'number', 
-          placeholder: 'kWh/m2 año' 
+        {
+          name: 'energy_consumption',
+          label: 'CONSUMO DE ENERGÍA',
+          type: 'number',
+          placeholder: 'kWh/m2 año'
         },
-        { 
-          name: 'emissions_consumption', 
-          label: 'CONSUMO DE EMISIONES', 
-          type: 'number', 
-          placeholder: 'kg CO/m2 año' 
+        {
+          name: 'emissions_consumption',
+          label: 'CONSUMO DE EMISIONES',
+          type: 'number',
+          placeholder: 'kg CO/m2 año'
         }
       ]
     },
@@ -217,15 +231,10 @@ export const houseChaletSchema: PropertyFormSchema = {
       title: 'Situación de la vivienda',
       fields: [
         {
-          name: 'situation',
+          name: 'reason_for_sale',
           label: 'Situación actual',
           type: 'radio',
-          options: [
-            { value: 'occupied', label: 'Ocupada ilegalmente' },
-            { value: 'rented', label: 'Alquilada con inquilinos' },
-            { value: 'bare_ownership', label: 'Nuda propiedad' },
-            { value: 'none', label: 'Ninguna de las anteriores' }
-          ]
+          optionsKey: 'reason_for_sale'
         }
       ]
     },

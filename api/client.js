@@ -72,6 +72,24 @@ const isRetryableNetworkError = (error) => {
   return !error?.response;
 };
 
+const isExpectedFallbackEndpointError = (details) => {
+  const status = details?.status ?? null;
+  const url = String(details?.url || '');
+  if (![404, 405].includes(status)) return false;
+  return (
+    url.includes('/agent/services/profile') ||
+    url.includes('/agent/service-profile') ||
+    url.includes('/agent/properties') ||
+    url.includes('/admin/properties')
+  );
+};
+
+const shouldLogApiWarning = (details) => {
+  if (!__DEV__) return false;
+  if (isExpectedFallbackEndpointError(details)) return false;
+  return true;
+};
+
 const withBaseUrlFallback = async (requestFn) => {
   const orderedCandidates = unique([activeBaseUrl, ...RESOLVED_API_BASE_CANDIDATES]);
   let lastError = null;
@@ -185,7 +203,7 @@ apiClient.interceptors.response.use(
     const details = getApiErrorDetails(error);
     const status = details.status;
 
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       try {
         await useAuthStore.getState().logout();
       } catch (logoutError) {
@@ -193,7 +211,9 @@ apiClient.interceptors.response.use(
       }
     }
 
-    console.warn(`API Error [${details.url}]:`, details.data || details.message);
+    if (shouldLogApiWarning(details)) {
+      console.warn(`API Error [${details.url}]:`, details.data || details.message);
+    }
     return Promise.reject(error);
   }
 );
@@ -743,4 +763,46 @@ export const deleteMyAccountApi = async (payload = {}) => {
     );
     return response.data;
   }
+};
+
+export const submitServiceRatingApi = async ({ providerUserId, workCode, stars }) => {
+  const payload = {
+    provider_user_id: providerUserId,
+    work_code: workCode,
+    stars,
+  };
+  const response = await withBaseUrlFallback(() => apiClient.post('/service-ratings', payload));
+  return response.data;
+};
+
+export const submitServiceRatingByCodeApi = async ({ workCode, stars }) => {
+  const payload = {
+    work_code: workCode,
+    stars,
+  };
+  const candidates = [
+    '/service-ratings/by-code',
+  ];
+  let lastError = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const endpoint = candidates[index];
+    try {
+      const response = await withBaseUrlFallback(() => apiClient.post(endpoint, payload));
+      return response.data;
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? null;
+      const hasNext = index < candidates.length - 1;
+      if (hasNext && (status === 404 || status === 405)) continue;
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+export const getMyServiceRatingsDashboardApi = async () => {
+  const response = await withBaseUrlFallback(() => apiClient.get('/service-ratings/my-dashboard'));
+  return response.data;
 };

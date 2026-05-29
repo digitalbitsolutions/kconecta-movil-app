@@ -8,7 +8,8 @@ import {
   InputField as UiInputField, 
   SelectField as UiSelectField,
   StepperField,
-  CheckboxField
+  CheckboxField,
+  CheckboxGrid
 } from '../../ui';
 
 interface Props {
@@ -23,7 +24,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({ schema }) => {
     setRawFieldValue, 
     catalogs, 
     loadingCatalogs,
-    toggleBooleanRawField
+    toggleBooleanRawField,
+    setOperationMode
   } = usePropertyForm();
 
   const renderField = (field: FormField) => {
@@ -40,12 +42,13 @@ export const DynamicFormRenderer: React.FC<Props> = ({ schema }) => {
         return (
           <UiInputField
             key={field.name}
-            label={field.label}
-            value={String(getRawFieldValue(field.name) || '')}
+            label={field.label + (field.required ? ' *' : '')}
+            value={getRawFieldValue(field.name) !== undefined && getRawFieldValue(field.name) !== null ? String(getRawFieldValue(field.name)) : ''}
             onChangeText={(v) => setRawFieldValue(field.name, v)}
-            placeholder={field.placeholder || '0'}
+            placeholder={field.placeholder || ''}
             keyboardType={field.type === 'number' ? 'numeric' : 'default'}
             required={field.required}
+            suffix={field.props?.suffix}
             {...field.props}
           />
         );
@@ -72,7 +75,10 @@ export const DynamicFormRenderer: React.FC<Props> = ({ schema }) => {
             label={field.label}
             value={getRawFieldValue(field.name)}
             options={options}
-            onSelect={(v) => setRawFieldValue(field.name, v)}
+            onSelect={(v) => {
+              setRawFieldValue(field.name, v);
+              if (field.name === 'category') setOperationMode(String(v));
+            }}
             loading={loadingCatalogs}
             {...field.props}
           />
@@ -85,6 +91,25 @@ export const DynamicFormRenderer: React.FC<Props> = ({ schema }) => {
             label={field.label}
             value={Number(getRawFieldValue(field.name) || 0)}
             onChange={(v) => setRawFieldValue(field.name, v)}
+            {...field.props}
+          />
+        );
+
+      case 'multiselect':
+        return (
+          <UiSelectField
+            key={field.name}
+            label={field.label + (field.required ? ' *' : '')}
+            value={getRawFieldValue(field.name)}
+            options={options}
+            multiple={true}
+            onSelect={(v) => {
+              const current = Array.isArray(getRawFieldValue(field.name)) ? getRawFieldValue(field.name) : [];
+              const next = current.includes(v) 
+                ? current.filter(x => x !== v)
+                : [...current, v];
+              setRawFieldValue(field.name, next);
+            }}
             {...field.props}
           />
         );
@@ -145,7 +170,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({ schema }) => {
             />
             <UiInputField
               label={field.label}
-              value={String(getRawFieldValue(field.name) || '')}
+              value={getRawFieldValue(field.name) !== undefined && getRawFieldValue(field.name) !== null ? String(getRawFieldValue(field.name)) : ''}
               onChangeText={(v) => setRawFieldValue(field.name, v)}
               placeholder={field.placeholder || 'Calle y numero'}
               required={field.required}
