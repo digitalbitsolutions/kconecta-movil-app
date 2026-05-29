@@ -1,10 +1,11 @@
 {
   "expo": {
     "name": "mobile",
-    "slug": "mobile",
+    "slug": "kconecta-proveedores",
     "scheme": "kconecta",
     "updates": {
-      "enabled": false
+      "enabled": false,
+      "url": "https://u.expo.dev/a8fda496-adfc-4663-8a86-3d3a9f6f4c4c"
     },
     "version": "1.0.0",
     "orientation": "portrait",
@@ -33,6 +34,16 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a8fda496-adfc-4663-8a86-3d3a9f6f4c4c"
+      }
+    },
+    "owner": "sttildeveloper",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

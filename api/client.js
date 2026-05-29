@@ -75,6 +75,9 @@ const isRetryableNetworkError = (error) => {
 const isExpectedFallbackEndpointError = (details) => {
   const status = details?.status ?? null;
   const url = String(details?.url || '');
+  if (status === 403 && (url.includes('/agent/services/profile') || url.includes('/agent/service-profile'))) {
+    return true;
+  }
   if (![404, 405].includes(status)) return false;
   return (
     url.includes('/agent/services/profile') ||

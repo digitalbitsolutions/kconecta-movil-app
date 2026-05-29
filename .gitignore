@@ -42,3 +42,9 @@ yarn-error.*
 
 # local helper outputs
 tmp/
+
+# local debug/artifacts
+.antigravitycli/
+logcat*.txt
+uidump.xml
+scratch_multipart.txt
